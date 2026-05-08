@@ -1,0 +1,180 @@
+"""File watcher (watchdog) + periodic check with configurable interval."""
+
+import logging
+import queue
+import threading
+import time
+from collections import deque
+from pathlib import Path
+from typing import Optional
+
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+logger = logging.getLogger(__name__)
+
+_JSON_PATH = Path(__file__).parent.parent / "symlinks.json"
+
+
+class _JsonHandler(FileSystemEventHandler):
+    def __init__(self, event_queue: queue.Queue):
+        super().__init__()
+        self._q = event_queue
+        self._debounce: threading.Timer | None = None
+        self._lock = threading.Lock()
+
+    def on_modified(self, event):
+        if Path(event.src_path).resolve() != _JSON_PATH.resolve():
+            return
+        with self._lock:
+            if self._debounce:
+                self._debounce.cancel()
+            self._debounce = threading.Timer(2.0, self._fire)
+            self._debounce.daemon = True
+            self._debounce.start()
+
+    def _fire(self):
+        logger.info("symlinks.json changed, queuing smart_sync")
+        self._q.put(("smart_sync",))
+
+
+class _AncestorDirHandler(FileSystemEventHandler):
+    """Watches all ancestor dirs of link/target paths.
+
+    on_moved (directory):  → ("repath", src, dest)  — no debounce, need both paths
+    on_created (directory): record in recent_creates deque + debounce refresh
+    on_deleted:             debounce refresh
+    """
+
+    def __init__(self, event_queue: queue.Queue, recent_creates: deque):
+        super().__init__()
+        self._q = event_queue
+        self._recent_creates = recent_creates
+        self._debounce: threading.Timer | None = None
+        self._lock = threading.Lock()
+
+    def on_any_event(self, event):
+        logger.debug("[watchdog] %s  is_dir=%s  src=%s  dest=%s",
+                     event.event_type, event.is_directory,
+                     event.src_path,
+                     getattr(event, "dest_path", ""))
+
+    def on_moved(self, event):
+        if not event.is_directory:
+            return  # junction renames handled by find_renamed_junction in refresh
+        logger.info("Dir moved: %s → %s", event.src_path, event.dest_path)
+        self._q.put(("repath", event.src_path, event.dest_path))
+
+    def on_created(self, event):
+        p = Path(event.src_path)
+        if p.is_dir():
+            self._recent_creates.append((time.time(), p))
+        self._debounce_refresh()
+
+    def on_deleted(self, event):
+        self._debounce_refresh()
+
+    def _debounce_refresh(self):
+        with self._lock:
+            if self._debounce:
+                self._debounce.cancel()
+            self._debounce = threading.Timer(1.0, self._fire_refresh)
+            self._debounce.daemon = True
+            self._debounce.start()
+
+    def _fire_refresh(self):
+        logger.info("Ancestor dir changed, queuing refresh")
+        self._q.put(("refresh",))
+
+
+class BackgroundWatcher:
+    def __init__(self, event_queue: queue.Queue, check_interval_seconds: int = 600):
+        self._q = event_queue
+        self._interval = check_interval_seconds
+        self._observer: Observer | None = None
+        self._timer: threading.Timer | None = None
+        self._running = False
+        self._dir_watches: dict[Path, object] = {}   # Path → watchdog Watch
+        self._recent_creates: deque = deque(maxlen=200)
+        self._ancestor_handler = _AncestorDirHandler(self._q, self._recent_creates)
+
+    def set_interval(self, seconds: int) -> None:
+        self._interval = seconds
+
+    def start(self):
+        self._running = True
+
+        handler = _JsonHandler(self._q)
+        self._observer = Observer()
+        self._observer.schedule(handler, str(_JSON_PATH.parent), recursive=False)
+        self._observer.daemon = True
+        self._observer.start()
+        logger.info("Watching %s", _JSON_PATH)
+
+        self._schedule_check()
+
+    def stop(self):
+        self._running = False
+        if self._timer:
+            self._timer.cancel()
+        if self._observer:
+            self._observer.stop()
+            self._observer.join(timeout=3)
+
+    def update_watch_dirs(self, dirs: dict[Path, bool]) -> None:
+        """Update watched ancestor directories.
+
+        dirs maps Path → recursive (True for OneDrive root, False for others).
+        """
+        if self._observer is None or not self._observer.is_alive():
+            return
+
+        new_set   = set(dirs.keys())
+        current   = set(self._dir_watches.keys())
+        to_add    = new_set - current
+        to_remove = current - new_set
+
+        for d in to_remove:
+            watch = self._dir_watches.pop(d, None)
+            if watch:
+                try:
+                    self._observer.unschedule(watch)
+                except Exception:
+                    pass
+
+        for d in to_add:
+            if not d.is_dir():
+                logger.warning("Watch dir does not exist, skipping: %s", d)
+                continue
+            try:
+                recursive = dirs[d]
+                watch = self._observer.schedule(
+                    self._ancestor_handler, str(d), recursive=recursive
+                )
+                self._dir_watches[d] = watch
+                logger.info("Watching %s (recursive=%s)", d, recursive)
+            except Exception as exc:
+                logger.warning("Cannot watch %s: %s", d, exc)
+
+    def find_recent_create(self, name: str, max_age_s: float = 5.0) -> Optional[Path]:
+        """Return the most recent directory created with the given name within max_age_s seconds."""
+        now        = time.time()
+        name_lower = name.lower()
+        for ts, path in reversed(list(self._recent_creates)):
+            if now - ts > max_age_s:
+                break
+            if path.name.lower() == name_lower and path.is_dir():
+                return path
+        return None
+
+    def _schedule_check(self):
+        if not self._running:
+            return
+        self._timer = threading.Timer(self._interval, self._periodic)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _periodic(self):
+        logger.info("Periodic check triggered")
+        self._q.put(("refresh",))
+        self._schedule_check()

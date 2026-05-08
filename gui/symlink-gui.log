@@ -1,0 +1,469 @@
+2026-05-08 16:30:03,317  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:30:03,673  INFO      root  [startup] Running sync...
+2026-05-08 16:30:03,694  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:30:29,308  INFO      root  [manual] Running sync...
+2026-05-08 16:30:29,326  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:35:40,408  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:35:40,796  INFO      root  [startup] Running sync...
+2026-05-08 16:35:40,861  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:36:31,891  INFO      root  Settings applied: interval=30min autostart=False close_to_tray=True
+2026-05-08 16:41:13,406  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:41:13,714  INFO      root  [startup] Running sync...
+2026-05-08 16:41:13,730  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:43:55,449  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:43:55,783  INFO      root  [startup] Running sync...
+2026-05-08 16:43:55,805  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:45:20,591  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:45:20,827  INFO      root  [startup] Running sync...
+2026-05-08 16:45:20,842  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:45:47,974  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:45:48,284  INFO      root  [startup] Running sync...
+2026-05-08 16:45:48,308  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:52:42,871  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 16:52:43,158  INFO      root  [startup] Running sync...
+2026-05-08 16:52:43,178  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 16:55:09,693  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 16:55:09,770  INFO      root  [json-changed] Running sync...
+2026-05-08 16:55:09,796  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 16:55:20,358  INFO      root  [manual] Running sync...
+2026-05-08 16:55:20,387  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 16:55:48,848  INFO      root  [manual] Running sync...
+2026-05-08 16:55:48,873  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 16:55:48,919  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 16:55:48,981  INFO      root  [json-changed] Running sync...
+2026-05-08 16:55:49,000  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 17:01:10,886  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 17:01:11,191  INFO      root  [startup] Running sync...
+2026-05-08 17:01:11,217  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 17:14:30,803  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 17:14:30,851  INFO      root  [json-changed] Running sync...
+2026-05-08 17:14:30,878  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 17:31:10,916  INFO      watcher  Periodic check triggered
+2026-05-08 17:31:11,030  INFO      root  [periodic] Running sync...
+2026-05-08 17:31:11,184  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 18:01:10,989  INFO      watcher  Periodic check triggered
+2026-05-08 18:01:11,053  INFO      root  [periodic] Running sync...
+2026-05-08 18:01:11,111  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 18:01:13,083  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 18:01:13,179  INFO      root  [json-changed] Running sync...
+2026-05-08 18:01:13,229  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 18:31:11,005  INFO      watcher  Periodic check triggered
+2026-05-08 18:31:11,034  INFO      root  [periodic] Running sync...
+2026-05-08 18:31:11,165  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 19:01:11,014  INFO      watcher  Periodic check triggered
+2026-05-08 19:01:11,088  INFO      root  [periodic] Running sync...
+2026-05-08 19:01:11,164  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 19:01:13,112  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 19:01:13,220  INFO      root  [json-changed] Running sync...
+2026-05-08 19:01:13,289  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 19:31:11,459  INFO      watcher  Periodic check triggered
+2026-05-08 19:31:11,574  INFO      root  [periodic] Running sync...
+2026-05-08 19:31:11,655  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 19:31:13,592  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 19:31:13,700  INFO      root  [json-changed] Running sync...
+2026-05-08 19:31:13,766  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:01:11,562  INFO      watcher  Periodic check triggered
+2026-05-08 20:01:11,608  INFO      root  [periodic] Running sync...
+2026-05-08 20:01:11,631  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:08:57,647  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:08:57,951  INFO      root  [startup] Running sync...
+2026-05-08 20:08:57,986  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 1 broken
+2026-05-08 20:09:03,749  INFO      root  [manual] Running sync...
+2026-05-08 20:09:03,765  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 1 broken
+2026-05-08 20:09:40,293  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 20:09:40,364  INFO      root  [json-changed] Running sync...
+2026-05-08 20:09:40,382  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:13:28,205  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:13:28,460  INFO      root  [startup] Running sync...
+2026-05-08 20:13:28,473  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:13:41,334  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 20:13:41,380  INFO      root  [json-changed] Running sync...
+2026-05-08 20:13:41,392  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:15:40,541  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:15:40,730  INFO      root  [startup] Running sync...
+2026-05-08 20:15:40,742  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:17:33,231  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:17:33,415  INFO      root  [startup] Running sync...
+2026-05-08 20:17:33,428  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:21:02,863  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:21:03,175  INFO      root  [startup] Running sync...
+2026-05-08 20:21:03,203  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:24:49,285  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:24:49,521  INFO      root  [startup] Running sync...
+2026-05-08 20:24:49,534  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:26:21,996  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:26:22,212  INFO      root  [startup] Running sync...
+2026-05-08 20:26:22,227  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:26:53,645  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 20:26:53,678  INFO      root  [json-changed] Running sync...
+2026-05-08 20:26:53,696  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:27:17,839  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 20:27:17,871  INFO      root  [json-changed] Running sync...
+2026-05-08 20:27:17,888  INFO      root  Sync done: 0 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:27:55,502  INFO      watcher  symlinks.json changed, queuing sync
+2026-05-08 20:27:55,533  INFO      root  [json-changed] Running sync...
+2026-05-08 20:27:55,547  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 20:45:35,493  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 20:45:35,693  INFO      root  [startup] Running sync...
+2026-05-08 20:45:35,781  INFO      root  Sync done: 1 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 20:46:08,532  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 20:46:08,640  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 20:46:40,712  INFO      watcher  Link parent dir changed, queuing refresh
+2026-05-08 20:46:40,836  WARNING   root  Junction gone, no rename found: test
+2026-05-08 20:53:17,317  INFO      watcher  Link parent dir changed, queuing refresh
+2026-05-08 20:53:17,523  WARNING   root  Junction gone, no rename found: test
+2026-05-08 21:00:36,302  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 21:00:36,470  INFO      root  [startup] Running sync...
+2026-05-08 21:00:36,559  INFO      root  Sync done: 1 created, 15 skipped, 0 failed, 0 broken
+2026-05-08 21:00:56,292  INFO      watcher  Link parent dir changed, queuing refresh
+2026-05-08 21:00:56,368  INFO      root  Rename detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-li
+2026-05-08 21:00:58,333  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 21:00:58,456  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 21:03:39,960  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 21:03:40,152  INFO      root  [startup] Running sync...
+2026-05-08 21:03:40,169  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 21:03:54,664  INFO      watcher  Link parent dir changed, queuing refresh
+2026-05-08 21:03:54,915  INFO      root  Rename detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-li → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-link
+2026-05-08 21:03:56,768  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 21:03:56,886  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 21:07:13,858  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 21:07:14,025  INFO      root  [startup] Running sync...
+2026-05-08 21:07:14,039  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 21:12:36,696  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 21:12:36,956  INFO      root  [startup] Running sync...
+2026-05-08 21:12:36,992  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 21:42:36,716  INFO      watcher  Periodic check triggered
+2026-05-08 22:00:42,279  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:00:42,654  INFO      root  [startup] Running sync...
+2026-05-08 22:00:42,737  INFO      root  Sync done: 0 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 22:01:00,274  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:01:15,203  INFO      watcher  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-li
+2026-05-08 22:01:15,287  INFO      root  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-li
+2026-05-08 22:01:15,994  INFO      root  Repath done: 1 updated, 0 failed
+2026-05-08 22:01:16,609  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:01:17,307  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:01:17,438  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:02:14,695  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:02:14,760  INFO      root  Explorer cut+paste detected (target): C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test-target
+2026-05-08 22:02:15,581  INFO      root  Explorer target recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test-target
+2026-05-08 22:02:16,426  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:02:16,829  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:02:16,871  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:02:36,537  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:02:36,582  INFO      root  Explorer cut+paste detected (target): C:\Users\Shi_Y\OneDrive\Codes\my-tools\test-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-target
+2026-05-08 22:02:37,183  INFO      root  Explorer target recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test-target
+2026-05-08 22:02:38,109  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:02:38,601  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:02:38,701  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:04:24,235  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:04:27,101  INFO      watcher  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\新建文件夹 → C:\Users\Shi_Y\OneDrive\Codes\my-tools\tests
+2026-05-08 22:04:27,112  INFO      root  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\新建文件夹 → C:\Users\Shi_Y\OneDrive\Codes\my-tools\tests
+2026-05-08 22:05:28,030  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:05:28,096  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:05:38,637  INFO      watcher  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\tests → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test
+2026-05-08 22:05:38,695  INFO      root  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\tests → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test
+2026-05-08 22:05:39,391  INFO      root  Repath done: 1 updated, 0 failed
+2026-05-08 22:05:40,081  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:05:40,755  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:05:40,798  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:05:53,462  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:12:20,834  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:12:21,170  INFO      root  [startup] Running sync...
+2026-05-08 22:12:21,201  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:12:36,820  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:12:52,450  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:13:16,586  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:13:30,637  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:15:09,588  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:15:09,676  DEBUG     PIL.Image  Importing AvifImagePlugin
+2026-05-08 22:15:09,678  DEBUG     PIL.Image  Importing BlpImagePlugin
+2026-05-08 22:15:09,680  DEBUG     PIL.Image  Importing BmpImagePlugin
+2026-05-08 22:15:09,680  DEBUG     PIL.Image  Importing BufrStubImagePlugin
+2026-05-08 22:15:09,681  DEBUG     PIL.Image  Importing CurImagePlugin
+2026-05-08 22:15:09,682  DEBUG     PIL.Image  Importing DcxImagePlugin
+2026-05-08 22:15:09,683  DEBUG     PIL.Image  Importing DdsImagePlugin
+2026-05-08 22:15:09,686  DEBUG     PIL.Image  Importing EpsImagePlugin
+2026-05-08 22:15:09,687  DEBUG     PIL.Image  Importing FitsImagePlugin
+2026-05-08 22:15:09,689  DEBUG     PIL.Image  Importing FliImagePlugin
+2026-05-08 22:15:09,690  DEBUG     PIL.Image  Importing FpxImagePlugin
+2026-05-08 22:15:09,691  DEBUG     PIL.Image  Image: failed to import FpxImagePlugin: No module named 'olefile'
+2026-05-08 22:15:09,691  DEBUG     PIL.Image  Importing FtexImagePlugin
+2026-05-08 22:15:09,692  DEBUG     PIL.Image  Importing GbrImagePlugin
+2026-05-08 22:15:09,693  DEBUG     PIL.Image  Importing GifImagePlugin
+2026-05-08 22:15:09,693  DEBUG     PIL.Image  Importing GribStubImagePlugin
+2026-05-08 22:15:09,694  DEBUG     PIL.Image  Importing Hdf5StubImagePlugin
+2026-05-08 22:15:09,694  DEBUG     PIL.Image  Importing IcnsImagePlugin
+2026-05-08 22:15:09,697  DEBUG     PIL.Image  Importing IcoImagePlugin
+2026-05-08 22:15:09,698  DEBUG     PIL.Image  Importing ImImagePlugin
+2026-05-08 22:15:09,699  DEBUG     PIL.Image  Importing ImtImagePlugin
+2026-05-08 22:15:09,700  DEBUG     PIL.Image  Importing IptcImagePlugin
+2026-05-08 22:15:09,701  DEBUG     PIL.Image  Importing JpegImagePlugin
+2026-05-08 22:15:09,702  DEBUG     PIL.Image  Importing Jpeg2KImagePlugin
+2026-05-08 22:15:09,702  DEBUG     PIL.Image  Importing McIdasImagePlugin
+2026-05-08 22:15:09,702  DEBUG     PIL.Image  Importing MicImagePlugin
+2026-05-08 22:15:09,703  DEBUG     PIL.Image  Image: failed to import MicImagePlugin: No module named 'olefile'
+2026-05-08 22:15:09,704  DEBUG     PIL.Image  Importing MpegImagePlugin
+2026-05-08 22:15:09,704  DEBUG     PIL.Image  Importing MpoImagePlugin
+2026-05-08 22:15:09,706  DEBUG     PIL.Image  Importing MspImagePlugin
+2026-05-08 22:15:09,707  DEBUG     PIL.Image  Importing PalmImagePlugin
+2026-05-08 22:15:09,708  DEBUG     PIL.Image  Importing PcdImagePlugin
+2026-05-08 22:15:09,709  DEBUG     PIL.Image  Importing PcxImagePlugin
+2026-05-08 22:15:09,710  DEBUG     PIL.Image  Importing PdfImagePlugin
+2026-05-08 22:15:09,715  DEBUG     PIL.Image  Importing PixarImagePlugin
+2026-05-08 22:15:09,716  DEBUG     PIL.Image  Importing PngImagePlugin
+2026-05-08 22:15:09,716  DEBUG     PIL.Image  Importing PpmImagePlugin
+2026-05-08 22:15:09,716  DEBUG     PIL.Image  Importing PsdImagePlugin
+2026-05-08 22:15:09,717  DEBUG     PIL.Image  Importing QoiImagePlugin
+2026-05-08 22:15:09,719  DEBUG     PIL.Image  Importing SgiImagePlugin
+2026-05-08 22:15:09,721  DEBUG     PIL.Image  Importing SpiderImagePlugin
+2026-05-08 22:15:09,722  DEBUG     PIL.Image  Importing SunImagePlugin
+2026-05-08 22:15:09,723  DEBUG     PIL.Image  Importing TgaImagePlugin
+2026-05-08 22:15:09,724  DEBUG     PIL.Image  Importing TiffImagePlugin
+2026-05-08 22:15:09,724  DEBUG     PIL.Image  Importing WebPImagePlugin
+2026-05-08 22:15:09,727  DEBUG     PIL.Image  Importing WmfImagePlugin
+2026-05-08 22:15:09,728  DEBUG     PIL.Image  Importing XbmImagePlugin
+2026-05-08 22:15:09,729  DEBUG     PIL.Image  Importing XpmImagePlugin
+2026-05-08 22:15:09,730  DEBUG     PIL.Image  Importing XVThumbImagePlugin
+2026-05-08 22:15:09,841  INFO      root  [startup] Running sync...
+2026-05-08 22:15:09,862  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:15:09,863  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:15:09,959  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\其他  dest=
+2026-05-08 22:15:13,410  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\古风十年  dest=
+2026-05-08 22:15:13,605  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\古风图  dest=
+2026-05-08 22:15:16,631  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\哈人  dest=
+2026-05-08 22:15:17,130  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\图文资料  dest=
+2026-05-08 22:15:17,567  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\图片  dest=
+2026-05-08 22:15:17,877  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\土土  dest=
+2026-05-08 22:15:17,991  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\在格致  dest=
+2026-05-08 22:15:18,181  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\大宝宝  dest=
+2026-05-08 22:15:18,370  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\好想看的书  dest=
+2026-05-08 22:15:18,433  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\子仰仰呀  dest=
+2026-05-08 22:15:18,686  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\字幕  dest=
+2026-05-08 22:15:18,800  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\存档  dest=
+2026-05-08 22:15:19,072  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\宝宝  dest=
+2026-05-08 22:15:19,141  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\小窝里的生活  dest=
+2026-05-08 22:15:19,251  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\微雕  dest=
+2026-05-08 22:15:19,383  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\所谓摄影  dest=
+2026-05-08 22:15:22,995  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\抽象  dest=
+2026-05-08 22:15:23,436  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\收藏  dest=
+2026-05-08 22:15:23,751  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\杂图  dest=
+2026-05-08 22:15:23,838  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\架空世界  dest=
+2026-05-08 22:15:23,869  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\江举习  dest=
+2026-05-08 22:15:24,073  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\流汗黄豆  dest=
+2026-05-08 22:15:25,611  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\港科大  dest=
+2026-05-08 22:15:25,670  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\级数求和  dest=
+2026-05-08 22:15:25,760  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\网友  dest=
+2026-05-08 22:15:25,957  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\表情  dest=
+2026-05-08 22:15:27,970  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\資源  dest=
+2026-05-08 22:15:28,191  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\逆天  dest=
+2026-05-08 22:15:29,079  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\那年十八  dest=
+2026-05-08 22:15:29,186  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\鸟巢2018  dest=
+2026-05-08 22:15:29,290  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Saved pictures\黄宗圣  dest=
+2026-05-08 22:15:29,334  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\Screenshots  dest=
+2026-05-08 22:15:31,328  DEBUG     watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Pictures\Screenshots\屏幕截图 2026-05-08 205343.png  dest=
+2026-05-08 22:15:31,427  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp  dest=
+2026-05-08 22:15:31,449  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM  dest=
+2026-05-08 22:15:36,435  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\人像  dest=
+2026-05-08 22:15:36,470  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\人文街拍  dest=
+2026-05-08 22:15:36,551  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\夜景  dest=
+2026-05-08 22:15:36,597  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\自拍  dest=
+2026-05-08 22:15:36,656  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\视频  dest=
+2026-05-08 22:15:37,992  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\连拍  dest=
+2026-05-08 22:15:38,019  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\连拍\IMG_20251025_173404  dest=
+2026-05-08 22:15:38,060  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\DCIM\连拍\IMG_20251025_173529  dest=
+2026-05-08 22:15:38,093  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures  dest=
+2026-05-08 22:15:38,667  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\55487994-7097-4C0A-B0E7-1834EA7946B0  dest=
+2026-05-08 22:15:38,709  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\69C57456-A46C-465E-8DC2-04F3A4C8681A  dest=
+2026-05-08 22:15:38,736  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\6EEA15CD-8A4C-4B7A-A938-F7AEF23C31F7  dest=
+2026-05-08 22:15:38,781  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\72D4E94C-A7B3-4F4B-B12E-A1493B02CF67  dest=
+2026-05-08 22:15:38,823  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\781A5322-6053-484C-B1C2-212D99161ED3  dest=
+2026-05-08 22:15:38,862  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\7E0C8A67-CEC8-49D1-B871-AECCDE11C2D2  dest=
+2026-05-08 22:15:38,894  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\96538570-29BB-462F-B6E4-35D1B01E941B  dest=
+2026-05-08 22:15:38,934  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\ArRuler  dest=
+2026-05-08 22:15:38,961  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\B6D4DAA1-846E-457A-B7FC-0674C742A324  dest=
+2026-05-08 22:15:38,993  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\baidu  dest=
+2026-05-08 22:15:39,033  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\baidu\searchbox  dest=
+2026-05-08 22:15:39,085  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\baidu\searchbox\downloads  dest=
+2026-05-08 22:15:39,134  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\bili  dest=
+2026-05-08 22:15:39,164  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\C685DCB7-77B8-4ACD-89A1-261782E24A17  dest=
+2026-05-08 22:15:39,208  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\CF49E593-6AA6-4EB6-A86C-E0F927F1FC62  dest=
+2026-05-08 22:15:39,245  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\changeImageZTE  dest=
+2026-05-08 22:15:39,269  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\ChatGPT  dest=
+2026-05-08 22:15:39,307  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Douban  dest=
+2026-05-08 22:15:39,436  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\E13617A3-0977-4A9F-83C2-CB5F0EDE3785  dest=
+2026-05-08 22:15:39,467  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\E76A77B8-B1DC-4BD8-B0F7-3A611C8BCB4B  dest=
+2026-05-08 22:15:39,495  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums  dest=
+2026-05-08 22:15:39,533  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\2401  dest=
+2026-05-08 22:15:39,602  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\2401汉堡行  dest=
+2026-05-08 22:15:40,235  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\2402  dest=
+2026-05-08 22:15:40,282  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\2402姑苏纪  dest=
+2026-05-08 22:15:40,352  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\2403马德里  dest=
+2026-05-08 22:15:41,223  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\GalleryAlbums\可能有用  dest=
+2026-05-08 22:15:41,803  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\ithome  dest=
+2026-05-08 22:15:41,967  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Jike  dest=
+2026-05-08 22:15:42,027  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Messenger  dest=
+2026-05-08 22:15:42,065  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\OfficeMobile  dest=
+2026-05-08 22:15:42,095  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\QQ  dest=
+2026-05-08 22:15:42,191  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Reddit  dest=
+2026-05-08 22:15:42,258  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Scans  dest=
+2026-05-08 22:15:42,293  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Screenshots  dest=
+2026-05-08 22:15:53,282  DEBUG     watcher  [watchdog] deleted  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\test  dest=
+2026-05-08 22:15:53,283  DEBUG     watcher  [watchdog] created  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test  dest=
+2026-05-08 22:15:53,284  DEBUG     watcher  [watchdog] created  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test\A-link  dest=
+2026-05-08 22:15:53,286  DEBUG     watcher  [watchdog] created  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test\A-target  dest=
+2026-05-08 22:15:53,286  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link  dest=
+2026-05-08 22:15:53,286  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test  dest=
+2026-05-08 22:15:53,286  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools  dest=
+2026-05-08 22:15:54,299  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:15:54,618  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\spdb  dest=
+2026-05-08 22:15:54,644  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Telegram  dest=
+2026-05-08 22:15:55,451  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\Twitter  dest=
+2026-05-08 22:15:56,321  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\UMETrip  dest=
+2026-05-08 22:15:56,447  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\WeiXin  dest=
+2026-05-08 22:15:57,575  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\xingse  dest=
+2026-05-08 22:15:57,617  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\想法  dest=
+2026-05-08 22:15:57,653  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\tmp\pictures\知乎  dest=
+2026-05-08 22:15:59,077  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\UbisoftConnect  dest=
+2026-05-08 22:15:59,135  DEBUG     watcher  [watchdog] modified  is_dir=True  src=C:\Users\Shi_Y\OneDrive\Pictures\屏幕快照  dest=
+2026-05-08 22:19:53,136  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:19:53,515  INFO      root  [startup] Running sync...
+2026-05-08 22:19:53,538  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:19:53,538  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:20:05,163  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:20:05,276  INFO      root  Dir move detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test
+2026-05-08 22:20:06,604  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:20:07,303  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:20:07,440  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:20:25,849  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:20:25,934  INFO      root  Dir move detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test
+2026-05-08 22:20:27,355  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:20:27,960  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:20:28,004  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:29:15,211  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:29:15,516  INFO      root  [startup] Running sync...
+2026-05-08 22:29:15,542  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:29:15,542  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:29:31,348  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:31,398  INFO      root  Dir move detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test → C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test
+2026-05-08 22:29:32,575  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:33,406  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:29:33,493  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:29:38,785  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:38,807  INFO      root  Dir move detected: C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\test → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test
+2026-05-08 22:29:39,969  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:40,823  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:29:40,913  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:29:57,232  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:57,345  INFO      root  Explorer cut+paste detected (target): C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-target
+2026-05-08 22:29:57,556  INFO      root  Explorer target recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-target
+2026-05-08 22:29:58,503  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:29:59,358  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:29:59,473  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:30:11,987  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:30:12,043  INFO      root  Explorer cut+paste detected (target): C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-target
+2026-05-08 22:30:12,357  INFO      root  Explorer target recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-target → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-target
+2026-05-08 22:30:13,281  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:30:14,074  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:30:14,151  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:37:33,869  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:37:34,111  INFO      root  [startup] Running sync...
+2026-05-08 22:37:34,128  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:37:34,129  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:37:52,196  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:40:58,107  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:41:04,007  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:41:49,589  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:41:49,863  INFO      root  [startup] Running sync...
+2026-05-08 22:41:49,876  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:41:49,876  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:42:05,704  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:42:05,926  INFO      root  Explorer cut+paste detected (junction kept): C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-link
+2026-05-08 22:42:09,220  INFO      root  Explorer link recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-link
+2026-05-08 22:42:10,107  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:42:11,118  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:42:11,252  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:42:46,715  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:44:58,305  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:44:58,392  INFO      root  Explorer cut+paste detected (junction kept): C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-link
+2026-05-08 22:45:01,619  INFO      root  Explorer link recovery done: C:\Users\Shi_Y\OneDrive\Codes\my-tools\A-link → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-link
+2026-05-08 22:45:02,572  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:45:03,579  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 22:45:03,649  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 22:47:11,313  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:47:30,537  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:49:41,995  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:49:54,790  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:54:19,964  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:54:20,282  INFO      root  [startup] Running sync...
+2026-05-08 22:54:20,310  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:54:20,311  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:54:36,299  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:54:36,414  WARNING   root  Explorer cut+paste: destination unknown for ronchi-literature
+2026-05-08 22:54:36,544  WARNING   root  Explorer cut+paste: destination unknown for test
+2026-05-08 22:55:03,648  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:55:03,719  WARNING   root  Explorer cut+paste: destination unknown for test2
+2026-05-08 22:55:25,113  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:55:32,567  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:55:41,477  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:55:47,294  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:56:01,701  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:56:14,092  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:58:45,308  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 22:58:45,657  INFO      root  [startup] Running sync...
+2026-05-08 22:58:45,690  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 22:58:45,691  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 22:59:01,249  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:59:01,363  WARNING   root  Explorer cut+paste: destination unknown for ronchi-literature
+2026-05-08 22:59:01,459  WARNING   root  Explorer cut+paste: destination unknown for test
+2026-05-08 22:59:01,585  WARNING   root  Explorer cut+paste: destination unknown for test2
+2026-05-08 22:59:36,493  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:59:49,639  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 22:59:49,729  WARNING   root  Explorer cut+paste: destination unknown for test2
+2026-05-08 23:13:31,917  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 23:13:32,172  INFO      root  [startup] Running sync...
+2026-05-08 23:13:32,203  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 23:13:32,203  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 23:13:47,507  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:13:47,600  INFO      root  Empty target detected for test
+2026-05-08 23:13:47,778  INFO      root  Empty target detected for test2
+2026-05-08 23:14:23,555  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:14:23,640  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:14:31,907  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:14:31,986  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:14:37,236  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:14:37,276  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:15:17,460  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:15:28,113  INFO      watcher  Watching C:\Users\Shi_Y\Downloads\A-link (recursive=False)
+2026-05-08 23:15:28,114  INFO      watcher  Watching C:\Users\Shi_Y (recursive=False)
+2026-05-08 23:15:28,114  INFO      watcher  Watching C:\Users (recursive=False)
+2026-05-08 23:15:28,115  INFO      watcher  Watching C:\Users\Shi_Y\Downloads (recursive=False)
+2026-05-08 23:15:28,829  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:15:29,760  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:15:29,859  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:15:41,576  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:15:41,689  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:17:06,387  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 23:17:06,657  INFO      root  [startup] Running sync...
+2026-05-08 23:17:06,746  INFO      watcher  Watching C:\Users (recursive=False)
+2026-05-08 23:17:06,747  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 23:17:06,747  INFO      watcher  Watching C:\Users\Shi_Y\Downloads (recursive=False)
+2026-05-08 23:17:06,748  INFO      watcher  Watching C:\Users\Shi_Y (recursive=False)
+2026-05-08 23:17:06,748  INFO      watcher  Watching C:\Users\Shi_Y\Downloads\A-link (recursive=False)
+2026-05-08 23:17:06,748  INFO      root  Sync done: 1 created, 16 skipped, 0 failed, 0 broken
+2026-05-08 23:17:29,743  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:17:29,770  INFO      root  Empty target detected for test
+2026-05-08 23:17:29,868  WARNING   root  Junction gone, no rename/recovery found: test2
+2026-05-08 23:17:46,481  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:17:46,577  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:17:55,255  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:17:58,929  INFO      watcher  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\新建文件夹 → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-Link
+2026-05-08 23:17:58,976  INFO      root  Dir moved: C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\新建文件夹 → C:\Users\Shi_Y\OneDrive\Codes\my-tools\test\A-Link
+2026-05-08 23:18:13,821  INFO      watcher  Ancestor dir changed, queuing refresh
+2026-05-08 23:18:14,746  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:18:14,791  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken
+2026-05-08 23:19:32,595  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlinks.json
+2026-05-08 23:19:33,014  INFO      root  [startup] Running sync...
+2026-05-08 23:19:33,053  INFO      watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-08 23:19:33,053  INFO      root  Sync done: 0 created, 17 skipped, 0 failed, 0 broken
+2026-05-08 23:19:43,426  INFO      watcher  symlinks.json changed, queuing smart_sync
+2026-05-08 23:19:43,505  INFO      root  Smart sync done: 0 created, 0 failed, 0 broken

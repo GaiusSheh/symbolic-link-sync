@@ -1,4 +1,4 @@
-﻿{
+{
     "machines": {
         "YFLAPTOP": {
             "onedrive": "C:/Users/Shi_Y/OneDrive"
@@ -63,7 +63,7 @@
             "id": "ronchi-literature",
             "description": "Ronchi literature, linked into Ronchi research folder",
             "link": "{onedrive}/files/Research/Ronchi/Literature",
-            "target": "{onedrive}/files/literature/Ronchi"
+            "target": "{onedrive}/files/literature/XFEL/Ronchi"
         },
         {
             "id": "ronchi-codes",
@@ -94,6 +94,18 @@
             "description": "近物实验, linked into 学科资料 folder",
             "link": "{onedrive}/files/学科资料/物理/实验/近物实验/近物实验",
             "target": "{onedrive}/垃圾/近物实验"
+        },
+        {
+            "id": "test",
+            "description": "test",
+            "link": "{onedrive}/Codes/my-tools/Sym-Link/test-li",
+            "target": "{onedrive}/Codes/my-tools/Sym-Link/test-target"
+        },
+        {
+            "id": "test2",
+            "description": "",
+            "link": "{onedrive}/Codes/my-tools/test/A-Link/A-link",
+            "target": "{onedrive}/Codes/my-tools/test/A-target"
         }
     ]
 }
