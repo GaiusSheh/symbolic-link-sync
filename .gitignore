@@ -1,0 +1,9 @@
+.claude/
+watcher.log
+scan_result.txt
+
+# Python GUI build artifacts
+gui/dist/
+gui/build/
+gui/__pycache__/
+gui/*.spec
