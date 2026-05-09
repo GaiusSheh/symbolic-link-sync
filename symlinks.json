@@ -97,14 +97,8 @@
         },
         {
             "id": "test",
-            "description": "test",
-            "link": "{onedrive}/Codes/my-tools/Sym-Link/test-li",
-            "target": "{onedrive}/Codes/my-tools/Sym-Link/test-target"
-        },
-        {
-            "id": "test2",
             "description": "",
-            "link": "{onedrive}/Codes/my-tools/test/A-Link/A-link",
+            "link": "{onedrive}/Codes/my-tools/test/ew/A-Link",
             "target": "{onedrive}/Codes/my-tools/test/A-target"
         }
     ]

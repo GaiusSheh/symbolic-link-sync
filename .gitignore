@@ -7,3 +7,8 @@ gui/dist/
 gui/build/
 gui/__pycache__/
 gui/*.spec
+
+# Runtime state / logs
+gui/symlink-gui.log
+gui/symlink-gui.log.*
+gui/state.json

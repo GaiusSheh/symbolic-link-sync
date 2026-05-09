@@ -1,10 +1,13 @@
 """Status window: Treeview table of all symlink entries + per-row edit / new-entry dialogs."""
 
+import logging
 import os
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 from symlink_manager import ERR_LINK_NONEMPTY, LinkEntry, Status, create_entry, delete_entry, edit_entry  # noqa: F401
 
@@ -37,12 +40,14 @@ def _center_on(dlg: tk.Toplevel, parent: tk.Toplevel):
 class StatusWindow:
     def __init__(self, root: tk.Tk, on_sync: Callable,
                  on_refresh_needed: Callable, on_open_settings: Callable,
-                 on_entry_saved: Callable[[str], None] | None = None):
+                 on_entry_saved: Callable[[str], None] | None = None,
+                 on_relink: Callable[[str], None] | None = None):
         self._root = root
         self._on_sync = on_sync
         self._on_refresh_needed = on_refresh_needed
         self._on_open_settings = on_open_settings
         self._on_entry_saved = on_entry_saved
+        self._on_relink = on_relink
         self._confirmed_empty: set[str] = set()
         self._win: tk.Toplevel | None = None
         self._tree: ttk.Treeview | None = None
@@ -87,6 +92,14 @@ class StatusWindow:
         self._win = win
         win.title("Sym-Link 状态")
         win.resizable(True, True)
+        try:
+            from icons import app_icon
+            from PIL import ImageTk
+            _ico = ImageTk.PhotoImage(app_icon(256), master=win)
+            win.iconphoto(False, _ico)
+            win._icon_ref = _ico
+        except Exception:
+            pass
         win.protocol("WM_DELETE_WINDOW", self._close_handler)
         win.minsize(900, 600)
         win.geometry("1800x900")
@@ -95,7 +108,7 @@ class StatusWindow:
         style.configure("Treeview", rowheight=40)
         style.configure("Treeview.Heading", padding=(4, 6))
 
-        cols = ("状态", "编号", "描述", "链接路径", "目标路径")
+        cols = ("状态", "名称", "描述", "链接路径", "目标路径")
         tree = ttk.Treeview(win, columns=cols, show="headings", height=16)
         self._tree = tree
 
@@ -104,7 +117,7 @@ class StatusWindow:
             tree.heading(col, text=col, anchor=anchor)
 
         tree.column("状态",   width=100, anchor="center", stretch=False)
-        tree.column("编号",   width=170, anchor="w",      stretch=False)
+        tree.column("名称",   width=170, anchor="w",      stretch=False)
         tree.column("描述",   width=200, anchor="w")
         tree.column("链接路径", width=320, anchor="w")
         tree.column("目标路径", width=320, anchor="w")
@@ -179,20 +192,43 @@ class StatusWindow:
         entry = next((e for e in self._entries if e.id == item), None)
         if not entry:
             return
+        link_ok   = os.path.lexists(entry.link)
+        target_ok = entry.target.exists()
+
         menu = tk.Menu(self._win, tearoff=0)
-        menu.add_command(label=f"删除 {entry.id}",
-                         command=lambda: self._delete_entry(entry))
+        menu.add_command(label="查看链接",
+                         state="normal" if link_ok else "disabled",
+                         command=lambda: self._open_in_explorer(entry.link))
+        menu.add_command(label="查看目标",
+                         state="normal" if target_ok else "disabled",
+                         command=lambda: self._open_in_explorer(entry.target))
+        menu.add_separator()
+        menu.add_command(label="（重新）链接 / 确认",
+                         command=lambda: self._relink_entry(entry))
+        menu.add_separator()
+        menu.add_command(label="删除管理",
+                         command=lambda: self._delete_entry(entry, remove_junction=False))
+        menu.add_command(label="删除管理和目录",
+                         command=lambda: self._delete_entry(entry, remove_junction=True))
         menu.tk_popup(event.x_root, event.y_root)
 
-    def _delete_entry(self, entry):
-        if not messagebox.askyesno(
-            "确认删除",
-            f"确认删除「{entry.id}」？\n\n此操作将同时删除对应的 Junction。",
-            icon="warning",
-            parent=self._win,
-        ):
+    def _relink_entry(self, entry):
+        if self._on_relink:
+            self._on_relink(entry.id)
+
+    def _open_in_explorer(self, path):
+        import subprocess
+        target = path if path.exists() else path.parent
+        subprocess.run(f'explorer /select,"{path}"', shell=True)
+
+    def _delete_entry(self, entry, remove_junction: bool = True):
+        if remove_junction:
+            msg = f"确认删除「{entry.id}」的管理记录，并同时删除对应的 Junction 目录？"
+        else:
+            msg = f"确认删除「{entry.id}」的管理记录？\n\nJunction 目录本身不会被删除。"
+        if not messagebox.askyesno("确认删除", msg, icon="warning", parent=self._win):
             return
-        ok, err = delete_entry(entry.id)
+        ok, err = delete_entry(entry.id, remove_junction=remove_junction)
         if ok:
             self._on_refresh_needed()
         else:
@@ -252,10 +288,9 @@ class StatusWindow:
         def browse_link():
             cur = link_var.get()
             init = str(Path(cur).parent) if cur and Path(cur).parent.exists() else "/"
-            p = filedialog.askdirectory(parent=dlg, title="选择链接所在目录", initialdir=init)
+            p = filedialog.askdirectory(parent=dlg, title="选择链接路径（选中目录即为链接位置）", initialdir=init)
             if p:
-                name = Path(cur).name if cur else ""
-                link_var.set(str(Path(p) / name) if name else p)
+                link_var.set(p)
 
         ttk.Button(outer, text="浏览...", command=browse_link).grid(
             row=3, column=2, padx=(6, 0), pady=4)
@@ -288,17 +323,42 @@ class StatusWindow:
             new_target = Path(target_var.get().strip())
             new_link   = Path(link_var.get().strip())
 
+            logger.info("edit confirm: id=%s link=%s→%s target=%s→%s",
+                        entry.id, entry.link, new_link, entry.target, new_target)
+
             if not new_id:
                 messagebox.showwarning("无效输入", "编号不能为空", parent=dlg)
                 return
 
+            # Check if link path already exists as a non-empty real directory
+            force = False
+            is_junc = new_link.is_junction()
+            lexists = new_link.exists() or os.path.lexists(new_link)
+            logger.info("new link path lexists=%s is_junction=%s", lexists, is_junc)
+            if lexists and not is_junc:
+                try:
+                    non_empty = any(new_link.iterdir())
+                except OSError:
+                    non_empty = False
+                if non_empty:
+                    if not messagebox.askyesno(
+                        "路径已存在",
+                        f"链接路径已存在非空目录：\n{new_link}\n\n删除其中所有内容并建立链接？",
+                        icon="warning", parent=dlg,
+                    ):
+                        return
+                    force = True
+
+            logger.info("calling edit_entry force=%s", force)
             ok = edit_entry(
                 entry.id,
-                new_id=new_id          if new_id     != entry.id          else None,
-                new_description=new_desc if new_desc != entry.description else None,
-                new_target=new_target  if new_target != entry.target      else None,
-                new_link=new_link      if new_link   != entry.link        else None,
+                new_id=new_id             if new_id     != entry.id          else None,
+                new_description=new_desc  if new_desc   != entry.description else None,
+                new_target=new_target     if new_target != entry.target      else None,
+                new_link=new_link         if new_link   != entry.link        else None,
+                force_overwrite=force,
             )
+            logger.info("edit_entry returned ok=%s", ok)
             if ok:
                 dlg.destroy()
                 if self._on_entry_saved:

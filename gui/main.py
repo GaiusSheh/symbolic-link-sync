@@ -20,8 +20,30 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import json
 import settings_manager as sm
 import symlink_manager as mgr
+from icons import app_icon
+
+_STATE_PATH = Path(__file__).parent / "state.json"
+
+
+def _load_confirmed_empty() -> set[str]:
+    try:
+        data = json.loads(_STATE_PATH.read_text(encoding="utf-8"))
+        return set(data.get("confirmed_empty", []))
+    except Exception:
+        return set()
+
+
+def _save_confirmed_empty(ids: set[str]) -> None:
+    try:
+        _STATE_PATH.write_text(
+            json.dumps({"confirmed_empty": sorted(ids)}, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
 from notifier import send_toast, show_banner
 from symlink_manager import LinkEntry, Status
 from settings_window import SettingsWindow
@@ -34,9 +56,9 @@ _POLL_MS  = 100
 
 
 def _setup_logging():
-    handler = logging.handlers.RotatingFileHandler(
-        _LOG_PATH, maxBytes=50_000, backupCount=1, encoding="utf-8"
-    )
+    _LOG_PATH.unlink(missing_ok=True)          # fresh log each run
+    Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
+    handler = logging.FileHandler(_LOG_PATH, encoding="utf-8")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
@@ -52,11 +74,23 @@ class App:
         self._root = tk.Tk()
         self._root.withdraw()
         self._root.title("Sym-Link")
+        try:
+            # Give the process its own taskbar identity (separates from python.exe)
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "YuanFeng.SymLink.GUI"
+            )
+            # iconphoto with high-res PNG — must be LAST icon call (iconbitmap overwrites it)
+            from PIL import ImageTk
+            _photo = ImageTk.PhotoImage(app_icon(256), master=self._root)
+            self._root.iconphoto(True, _photo)   # True = propagate to all child Toplevels
+            self._app_icon_ref = _photo   # prevent GC
+        except Exception:
+            pass
 
         self._entries: list[LinkEntry] = []
         self._last_sync: datetime | None = None
-        self._repair_shown: set[str] = set()      # entry IDs that already have a repair dialog
-        self._confirmed_empty: set[str] = set()   # entry IDs user confirmed as intentionally empty
+        self._repair_shown: set[str] = set()
+        self._confirmed_empty: set[str] = _load_confirmed_empty()
 
         self._tray = TrayIcon(
             event_queue=self._q,
@@ -71,6 +105,7 @@ class App:
             on_refresh_needed=self._request_refresh,
             on_open_settings=self._request_open_settings,
             on_entry_saved=self._on_entry_saved,
+            on_relink=self._on_relink_entry,
         )
         self._settings_win = SettingsWindow(
             root=self._root,
@@ -157,7 +192,7 @@ class App:
         next_check = self._last_sync + timedelta(
             seconds=self._settings.check_interval_minutes * 60
         )
-        self._tray.update(self._entries, self._last_sync, next_check)
+        self._tray.update(self._entries, self._last_sync, next_check, confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
         if result.created:
@@ -172,7 +207,6 @@ class App:
 
     def _do_sync(self, reason: str = ""):
         self._repair_shown.clear()
-        self._confirmed_empty.clear()
         logging.info("[%s] Running sync...", reason)
         result = mgr.sync_all()
         self._last_sync = datetime.now()
@@ -181,7 +215,8 @@ class App:
         )
 
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, next_check)
+        self._tray.update(self._entries, self._last_sync, next_check, confirmed_empty=self._confirmed_empty)
+        self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -199,7 +234,7 @@ class App:
         if not updated and not failed:
             return  # unrelated directory move, ignore
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync)
+        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
         old_name = Path(old_path).name
@@ -250,7 +285,7 @@ class App:
                         logging.info("Dir move detected: %s → %s", old_base, new_base)
                         updated, failed = mgr.repath_entries(str(old_base), str(new_base))
                         self._entries = mgr.check_all()
-                        self._tray.update(self._entries, self._last_sync)
+                        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
                         self._window.refresh(self._entries)
                         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
                         msg = f"已更新 {len(updated)} 项路径：{old_base.name} → {new_base.name}"
@@ -271,7 +306,10 @@ class App:
                 except OSError:
                     target_empty = False
                 if not target_empty:
-                    self._repair_shown.discard(entry.id)   # situation resolved, reset for next time
+                    self._repair_shown.discard(entry.id)
+                    if entry.id in self._confirmed_empty:
+                        self._confirmed_empty.discard(entry.id)
+                        _save_confirmed_empty(self._confirmed_empty)
                 if target_empty:
                     new_dir = self._watcher.find_recent_create(entry.link.name, max_age_s=10.0)
                     if new_dir and new_dir.parent != entry.link.parent:
@@ -334,7 +372,8 @@ class App:
             elif entry.status == Status.BROKEN and (not prev_entry or prev_entry.status != Status.BROKEN):
                 send_toast("Sym-Link: 断链", f"{entry.id}: target 不可达")
 
-        self._tray.update(self._entries, self._last_sync)
+        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -370,7 +409,7 @@ class App:
             logging.error("Explorer link recovery failed for %s: %s", entry.id, exc)
 
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync)
+        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -423,7 +462,10 @@ class App:
         def confirm_empty():
             self._confirmed_empty.add(entry.id)
             self._repair_shown.discard(entry.id)
+            _save_confirmed_empty(self._confirmed_empty)
             self._window.set_confirmed_empty(self._confirmed_empty)
+            self._tray.update(self._entries, self._last_sync,
+                              confirmed_empty=self._confirmed_empty)
             dlg.destroy()
 
         def edit_now():
@@ -450,7 +492,7 @@ class App:
             msg = f"{entry.id} target 路径更新失败，请手动重建"
             show_banner(self._root, "Sym-Link: 更新失败", msg)
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync)
+        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -458,11 +500,28 @@ class App:
         self._watcher.stop()
         self._root.quit()
 
+    def _on_relink_entry(self, entry_id: str):
+        """Rebuild junction + confirm empty target for the given entry."""
+        ok = mgr.edit_entry(entry_id)
+        self._confirmed_empty.add(entry_id)
+        self._repair_shown.discard(entry_id)
+        _save_confirmed_empty(self._confirmed_empty)
+        self._entries = mgr.check_all()
+        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._window.set_confirmed_empty(self._confirmed_empty)
+        self._window.refresh(self._entries)
+        if not ok:
+            from tkinter import messagebox
+            messagebox.showerror("重连失败", f"「{entry_id}」junction 重建失败，请检查路径。")
+
     def _on_entry_saved(self, entry_id: str):
         """Called when user saves an entry via the edit dialog — counts as confirming empty target."""
         self._confirmed_empty.add(entry_id)
         self._repair_shown.discard(entry_id)
+        _save_confirmed_empty(self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync,
+                          confirmed_empty=self._confirmed_empty)
 
     def _on_settings_applied(self, new_settings: sm.Settings):
         self._settings = new_settings

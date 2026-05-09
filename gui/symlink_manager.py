@@ -122,8 +122,12 @@ def _remove_link(link: Path) -> tuple[bool, str]:
         try:
             link.rmdir()   # only succeeds if empty
             return True, ""
-        except OSError as e:
-            return False, str(e)
+        except OSError:
+            # Fallback: CMD rmdir handles permission issues and OneDrive placeholders
+            r = subprocess.run(f'rmdir /s /q "{link}"', shell=True,
+                               capture_output=True,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
+            return r.returncode == 0, _decode(r.stderr)
     try:
         link.unlink()
         return True, ""
@@ -283,7 +287,8 @@ def edit_entry(entry_id: str,
                new_target:      Optional[Path] = None,
                new_description: Optional[str]  = None,
                new_id:          Optional[str]  = None,
-               new_link:        Optional[Path]  = None) -> bool:
+               new_link:        Optional[Path]  = None,
+               force_overwrite: bool = False) -> bool:
     cfg      = _load_raw()
     onedrive = get_onedrive()
     if onedrive is None:
@@ -322,16 +327,37 @@ def edit_entry(entry_id: str,
 
     effective_id = new_id if (new_id and new_id != entry_id) else entry_id
 
-    if link_changed or target_changed:
-        if link_changed and old_link is not None:
-            _remove_link(old_link)
-        for entry in check_all():
-            if entry.id == effective_id:
-                if not link_changed:
-                    _remove_link(entry.link)
-                if entry.target.exists():
-                    _create_junction(entry.link, entry.target)
+    if link_changed and old_link is not None:
+        _remove_link(old_link)
+
+    import logging as _log
+    for entry in check_all():
+        if entry.id == effective_id:
+            if not entry.target.exists():
                 return True
+            # Remove existing path if force-overwrite requested
+            if force_overwrite and entry.link.exists():
+                r = subprocess.run(
+                    f'rmdir /s /q "{entry.link}"',
+                    shell=True, capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+                _log.info("rmdir %s → rc=%d  stderr=%r",
+                          entry.link, r.returncode, _decode(r.stderr))
+                if r.returncode != 0:
+                    return False
+            # Always rebuild if junction is missing or broken
+            if not entry.link.is_junction() or not entry.link.exists():
+                if os.path.lexists(entry.link):   # lexists catches broken junctions
+                    ok_rm, err_rm = _remove_link(entry.link)
+                    _log.info("remove_link %s → ok=%s  err=%r", entry.link, ok_rm, err_rm)
+                    if not ok_rm:
+                        return False
+                ok, err = _create_junction(entry.link, entry.target)
+                _log.info("create_junction %s → ok=%s  err=%r", entry.link, ok, err)
+                if not ok:
+                    return False
+            return True
 
     return True
 

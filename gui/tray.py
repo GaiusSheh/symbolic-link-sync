@@ -6,29 +6,18 @@ from datetime import datetime
 from typing import Callable
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image
 
+from icons import tray_icon
 from symlink_manager import Status
 
 
-def _draw_icon(color: str) -> Image.Image:
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse([4, 4, 60, 60], fill=color)
-    return img
-
-
-_COLOR = {
-    "green":  "#4CAF50",
-    "yellow": "#FFC107",
-    "red":    "#F44336",
-}
-
-
-def _status_color(entries) -> str:
-    if any(e.status == Status.BROKEN for e in entries):
+def _status_color(entries, confirmed_empty: set[str]) -> str:
+    if any(e.status in (Status.BROKEN, Status.MISSING) for e in entries):
         return "red"
     if any(e.status == Status.PENDING for e in entries):
+        return "yellow"
+    if any(e.target_empty and e.id not in confirmed_empty for e in entries):
         return "yellow"
     return "green"
 
@@ -61,7 +50,7 @@ class TrayIcon:
 
         self._icon = pystray.Icon(
             "sym-link",
-            icon=_draw_icon(_COLOR["green"]),
+            icon=tray_icon("green"),
             title="Sym-Link",
             menu=self._build_menu(),
         )
@@ -94,15 +83,16 @@ class TrayIcon:
         self._on_quit()
 
     def update(self, entries, last_sync: datetime | None = None,
-               next_check: datetime | None = None):
+               next_check: datetime | None = None,
+               confirmed_empty: set[str] | None = None):
         self._entries = entries
         if last_sync:
             self._last_sync = last_sync
         if next_check:
             self._next_check = next_check
 
-        color_key = _status_color(entries)
-        self._icon.icon = _draw_icon(_COLOR[color_key])
+        color_key = _status_color(entries, confirmed_empty or set())
+        self._icon.icon = tray_icon(color_key)
         self._icon.title = _status_tooltip(entries)
         self._icon.menu = self._build_menu()
 
