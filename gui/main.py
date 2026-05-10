@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import json
+from typing import Optional
 import settings_manager as sm
 import symlink_manager as mgr
 from icons import app_icon
@@ -45,7 +46,9 @@ def _save_confirmed_empty(ids: set[str]) -> None:
     except Exception:
         pass
 from notifier import send_toast, show_banner
+from registration_window import RegistrationWindow
 from symlink_manager import LinkEntry, Status
+from scan_window import ScanWindow
 from settings_window import SettingsWindow
 from tray import TrayIcon
 from watcher import BackgroundWatcher
@@ -91,6 +94,7 @@ class App:
         self._last_sync: datetime | None = None
         self._repair_shown: set[str] = set()
         self._confirmed_empty: set[str] = _load_confirmed_empty()
+        self._quitting = False
 
         self._tray = TrayIcon(
             event_queue=self._q,
@@ -106,10 +110,16 @@ class App:
             on_open_settings=self._request_open_settings,
             on_entry_saved=self._on_entry_saved,
             on_relink=self._on_relink_entry,
+            on_open_scan=self._do_open_scan,
+            on_manage_bases=self._do_manage_bases,
         )
         self._settings_win = SettingsWindow(
             root=self._root,
             on_apply=self._on_settings_applied,
+        )
+        self._scan_window = ScanWindow(
+            root=self._root,
+            on_done=self._request_refresh,
         )
         self._watcher = BackgroundWatcher(
             self._q,
@@ -117,6 +127,17 @@ class App:
         )
 
         self._apply_close_to_tray(self._settings.close_to_tray)
+
+        # Migrate old-format JSON (machine field / top-level scanned) if needed
+        mgr.migrate_to_local_data()
+        mgr.normalize_entries()
+
+        # Prompt registration if machine not yet configured
+        if not mgr.is_registered():
+            RegistrationWindow(self._root).show_modal()
+
+        # Warn about bases used globally but not yet handled on this machine
+        self._root.after(200, self._check_pending_bases)
 
     def _apply_close_to_tray(self, enabled: bool):
         if enabled:
@@ -140,13 +161,16 @@ class App:
     # ── Queue polling ────────────────────────────────────────────────────────
 
     def _poll(self):
+        if self._quitting:
+            return
         try:
             while True:
                 msg = self._q.get_nowait()
                 self._handle(msg)
         except queue.Empty:
             pass
-        self._root.after(_POLL_MS, self._poll)
+        if not self._quitting:
+            self._root.after(_POLL_MS, self._poll)
 
     def _handle(self, msg):
         kind = msg[0]
@@ -208,6 +232,9 @@ class App:
     def _do_sync(self, reason: str = ""):
         self._repair_shown.clear()
         logging.info("[%s] Running sync...", reason)
+        nd, np = mgr.normalize_entries()
+        if nd or np:
+            logging.info("normalize_entries: %d demoted, %d promoted", nd, np)
         result = mgr.sync_all()
         self._last_sync = datetime.now()
         next_check = self._last_sync + timedelta(
@@ -219,6 +246,8 @@ class App:
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        mgr.refresh_machine_drives()
+        self._watcher.update_drive_roots(mgr.get_machine_drives())
 
         logging.info("Sync done: %d created, %d skipped, %d failed, %d broken",
                      len(result.created), len(result.skipped),
@@ -233,6 +262,7 @@ class App:
         updated, failed = mgr.repath_entries(old_path, new_path)
         if not updated and not failed:
             return  # unrelated directory move, ignore
+        mgr.normalize_entries()
         self._entries = mgr.check_all()
         self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
@@ -251,6 +281,28 @@ class App:
             self._entries = mgr.check_all()
         self._window.show(self._entries)
 
+    def _find_moved_junction(self, entry: LinkEntry) -> Optional[Path]:
+        """Check recent_creates for a same-named junction pointing to entry.target.
+
+        Handles the case where a junction was moved between two watched base
+        directories: watchdog fires separate Delete+Create events, so on_moved
+        never fires, but the new junction appears in recent_creates.
+        """
+        new_loc = self._watcher.find_recent_create(entry.link.name, max_age_s=8.0)
+        if not new_loc or not new_loc.is_junction():
+            return None
+        try:
+            rp = str(Path(os.readlink(str(new_loc)))).replace("\\", "/")
+            for pfx in ("//?/", "//./"):
+                if rp.startswith(pfx):
+                    rp = rp[len(pfx):]
+                    break
+            if rp.lower() == str(entry.target).replace("\\", "/").lower():
+                return new_loc
+        except OSError:
+            pass
+        return None
+
     def _find_moved_ancestor(self, entry: LinkEntry) -> tuple[Path, Path] | None:
         """Walk link/target ancestors; return (old_ancestor, new_loc) if a dir was recently moved."""
         seen: set[Path] = set()
@@ -267,6 +319,7 @@ class App:
         return None
 
     def _do_refresh(self):
+        mgr.normalize_entries()
         prev = {e.id: e for e in self._entries}
         self._entries = mgr.check_all()
         _repaths_done: set[str] = set()   # avoid duplicate repath calls per ancestor
@@ -294,8 +347,18 @@ class App:
                         send_toast("Sym-Link: 已自动更新路径", msg)
                         show_banner(self._root, "Sym-Link: 已自动更新路径", msg)
                 else:
-                    logging.warning("Dir move: no destination found for %s", entry.id)
-                    self._show_repair_dialog(entry, "目录已移动，但无法找到新位置，请手动更新路径。")
+                    # Check if the junction itself moved between watched base dirs
+                    new_link = self._find_moved_junction(entry)
+                    if new_link:
+                        logging.info("Junction moved: %s → %s", entry.link, new_link)
+                        mgr.edit_entry(entry.id, new_link=new_link)
+                        msg = f"{entry.id}: {entry.link.parent.name} → {new_link.parent.name}"
+                        send_toast("Sym-Link: 已自动更新", msg)
+                        show_banner(self._root, "Sym-Link: 已自动更新", msg)
+                        self._entries = mgr.check_all()
+                    else:
+                        logging.warning("Dir move: no destination found for %s", entry.id)
+                        self._show_repair_dialog(entry, "目录已移动，但无法找到新位置，请手动更新路径。")
                 continue
 
             # ── Explorer cut+paste junction: junction still exists but target emptied ─
@@ -398,6 +461,7 @@ class App:
                 raise RuntimeError(f"创建 junction 失败: {err}")
 
             mgr.rename_link_in_json(entry.id, new_dir)
+            mgr.normalize_entries()
             msg = f"{entry.id}: {entry.link.name} → {new_dir.name}"
             send_toast("Sym-Link: 已自动修复 Explorer 移动", msg)
             show_banner(self._root, "Sym-Link: 已自动修复 Explorer 移动", msg)
@@ -484,6 +548,7 @@ class App:
     def _do_explorer_recovery_target(self, entry: LinkEntry, new_dir: Path):
         """Target was moved cross-drive; just update JSON and rebuild junction."""
         ok = mgr.edit_entry(entry.id, new_target=new_dir)
+        mgr.normalize_entries()
         if ok:
             msg = f"{entry.id}: target 路径已更新 → {new_dir.name}"
             show_banner(self._root, "Sym-Link: 已自动更新 target 路径", msg)
@@ -497,12 +562,38 @@ class App:
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
     def _do_quit(self):
-        self._watcher.stop()
-        self._root.quit()
+        self._quitting = True
+        threading.Thread(target=self._watcher.stop, daemon=True, name="quit-cleanup").start()
+        self._root.destroy()
+
+    def _do_open_scan(self):
+        self._scan_window.show(self._entries)
+
+    def _do_manage_bases(self):
+        RegistrationWindow(self._root).show()
+
+    def _check_pending_bases(self):
+        """Show a warning if global symlinks use bases not yet handled on this machine."""
+        pending = mgr.get_pending_bases()
+        if not pending:
+            return
+        import tkinter.ttk as ttk
+        from tkinter import messagebox
+        keys_str = "\n".join(f"  {{{k}}}" for k in sorted(pending))
+        ans = messagebox.askquestion(
+            "同步目录未配置",
+            f"以下同步目录在全局配置中被使用，但本机尚未配置路径：\n\n"
+            + keys_str
+            + "\n\n是否立即配置？（选否则相关条目将在本次运行中被跳过）",
+            icon="warning",
+        )
+        if ans == "yes":
+            RegistrationWindow(self._root).show()
 
     def _on_relink_entry(self, entry_id: str):
         """Rebuild junction + confirm empty target for the given entry."""
         ok = mgr.edit_entry(entry_id)
+        mgr.normalize_entries()
         self._confirmed_empty.add(entry_id)
         self._repair_shown.discard(entry_id)
         _save_confirmed_empty(self._confirmed_empty)
@@ -516,6 +607,7 @@ class App:
 
     def _on_entry_saved(self, entry_id: str):
         """Called when user saves an entry via the edit dialog — counts as confirming empty target."""
+        mgr.normalize_entries()
         self._confirmed_empty.add(entry_id)
         self._repair_shown.discard(entry_id)
         _save_confirmed_empty(self._confirmed_empty)
@@ -527,6 +619,8 @@ class App:
         self._settings = new_settings
         self._watcher.set_interval(new_settings.check_interval_minutes * 60)
         self._apply_close_to_tray(new_settings.close_to_tray)
+        mgr.refresh_machine_drives()
+        self._watcher.update_drive_roots(mgr.get_machine_drives())
         logging.info("Settings applied: interval=%dmin autostart=%s close_to_tray=%s",
                      new_settings.check_interval_minutes,
                      new_settings.autostart,
@@ -535,18 +629,6 @@ class App:
 
 def main():
     _setup_logging()
-
-    if mgr.get_onedrive() is None:
-        import socket
-        import tkinter.messagebox as mb
-        tk.Tk().withdraw()
-        mb.showerror(
-            "Sym-Link",
-            f"机器 '{socket.gethostname()}' 未在 symlinks.json 中注册。\n"
-            "请先在 machines 表中添加此机器。",
-        )
-        sys.exit(1)
-
     App().run()
 
 

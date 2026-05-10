@@ -8,8 +8,14 @@ from collections import deque
 from pathlib import Path
 from typing import Optional
 
+import win32con
+import win32file
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+
+_FILE_NOTIFY_CHANGE_DIR_NAME  = 0x00000002
+_FILE_ACTION_ADDED            = 1
+_FILE_ACTION_RENAMED_NEW_NAME = 5
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +72,7 @@ class _AncestorDirHandler(FileSystemEventHandler):
         self._q.put(("repath", event.src_path, event.dest_path))
 
     def on_created(self, event):
-        p = Path(event.src_path)
-        if p.is_dir():
-            self._recent_creates.append((time.time(), p))
+        # recent_creates is handled exclusively by _DriveRootThread (full-drive coverage)
         self._debounce_refresh()
 
     def on_deleted(self, event):
@@ -87,6 +91,67 @@ class _AncestorDirHandler(FileSystemEventHandler):
         self._q.put(("refresh",))
 
 
+class _DriveRootThread(threading.Thread):
+    """Watches a drive root recursively for directory creates/renames only.
+
+    Uses ReadDirectoryChangesW with FILE_NOTIFY_CHANGE_DIR_NAME exclusively,
+    so file-level events never reach Python — overhead is negligible even for C:\\.
+    Records qualifying events into the shared recent_creates deque.
+    """
+
+    def __init__(self, drive: Path, recent_creates: deque):
+        super().__init__(daemon=True, name=f"DriveRoot-{drive.drive}")
+        self._drive          = drive
+        self._recent_creates = recent_creates
+        self._stop           = threading.Event()
+        self._fhandle        = None   # Win32 HANDLE (not threading.Thread._handle)
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._fhandle:
+            try:
+                win32file.CloseHandle(self._fhandle)   # unblocks ReadDirectoryChangesW
+            except Exception:
+                pass
+
+    def run(self) -> None:
+        try:
+            self._fhandle = win32file.CreateFile(
+                str(self._drive),
+                win32con.GENERIC_READ,
+                win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE,
+                None, win32con.OPEN_EXISTING,
+                win32con.FILE_FLAG_BACKUP_SEMANTICS, None,
+            )
+        except Exception as exc:
+            logger.warning("DriveRootThread: cannot open %s: %s", self._drive, exc)
+            return
+        try:
+            while not self._stop.is_set():
+                try:
+                    results = win32file.ReadDirectoryChangesW(
+                        self._fhandle,
+                        1024 * 1024,                    # 1 MB buffer
+                        True,                           # watch_subtree (recursive)
+                        _FILE_NOTIFY_CHANGE_DIR_NAME,   # directories only
+                        None, None,
+                    )
+                    for action, rel_path in results:
+                        if action in (_FILE_ACTION_ADDED, _FILE_ACTION_RENAMED_NEW_NAME):
+                            full = self._drive / rel_path
+                            self._recent_creates.append((time.time(), full))
+                            logger.debug("DriveRootThread create: %s", full)
+                except Exception:
+                    if not self._stop.is_set():
+                        time.sleep(1)
+        finally:
+            try:
+                win32file.CloseHandle(self._fhandle)
+            except Exception:
+                pass
+            self._fhandle = None
+
+
 class BackgroundWatcher:
     def __init__(self, event_queue: queue.Queue, check_interval_seconds: int = 600):
         self._q = event_queue
@@ -97,6 +162,7 @@ class BackgroundWatcher:
         self._dir_watches: dict[Path, object] = {}   # Path → watchdog Watch
         self._recent_creates: deque = deque(maxlen=200)
         self._ancestor_handler = _AncestorDirHandler(self._q, self._recent_creates)
+        self._drive_threads: dict[Path, _DriveRootThread] = {}
 
     def set_interval(self, seconds: int) -> None:
         self._interval = seconds
@@ -117,9 +183,24 @@ class BackgroundWatcher:
         self._running = False
         if self._timer:
             self._timer.cancel()
+        for t in self._drive_threads.values():
+            t.stop()
+        self._drive_threads.clear()
         if self._observer:
             self._observer.stop()
             self._observer.join(timeout=3)
+
+    def update_drive_roots(self, drives: list[Path]) -> None:
+        """Start/stop _DriveRootThread instances to match the given drive list."""
+        new     = {d.resolve() for d in drives}
+        current = set(self._drive_threads.keys())
+        for d in current - new:
+            self._drive_threads.pop(d).stop()
+        for d in new - current:
+            t = _DriveRootThread(d, self._recent_creates)
+            t.start()
+            self._drive_threads[d] = t
+            logger.info("DriveRootThread started: %s", d)
 
     def update_watch_dirs(self, dirs: dict[Path, bool]) -> None:
         """Update watched ancestor directories.

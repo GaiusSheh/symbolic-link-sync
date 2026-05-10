@@ -9,7 +9,7 @@ import pystray
 from PIL import Image
 
 from icons import tray_icon
-from symlink_manager import Status
+from symlink_manager import Status, get_scanned, get_other_machines_local_entries
 
 
 def _status_color(entries, confirmed_empty: set[str]) -> str:
@@ -18,6 +18,15 @@ def _status_color(entries, confirmed_empty: set[str]) -> str:
     if any(e.status == Status.PENDING for e in entries):
         return "yellow"
     if any(e.target_empty and e.id not in confirmed_empty for e in entries):
+        return "yellow"
+    my_ids = {e.id for e in entries}
+    # Unmanaged scan items → yellow
+    managed_links = {str(e.link).lower() for e in entries}
+    if any(not s.get("ignored") and s.get("link", "").lower() not in managed_links
+           for s in get_scanned()):
+        return "yellow"
+    # Offline entries not yet configured on this machine → yellow
+    if any(eid not in my_ids for eid in get_other_machines_local_entries()):
         return "yellow"
     return "green"
 

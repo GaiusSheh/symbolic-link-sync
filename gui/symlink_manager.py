@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -31,7 +32,8 @@ class LinkEntry:
     link: Path
     target: Path
     status: Status
-    target_empty: bool = False   # True when status is OK but target directory is empty
+    target_empty: bool = False       # True when status is OK but target directory is empty
+    machine_specific: bool = False   # True when link or target uses an absolute path (no template)
 
 
 @dataclass
@@ -60,22 +62,500 @@ def _machine_name() -> str:
     return socket.gethostname().upper()
 
 
-def get_onedrive() -> Optional[str]:
+def _local_data(cfg: dict, machine: str) -> dict:
+    """Return (creating if needed) the local_data sub-dict for a machine."""
+    return (cfg.setdefault("local_data", {})
+               .setdefault(machine, {"symlinks": [], "scanned": []}))
+
+
+def _is_global(link_json: str, target_json: str) -> bool:
+    """True when both paths use only template tokens (no absolute paths)."""
+    return link_json.startswith("{") and target_json.startswith("{")
+
+
+def get_other_machines_local_entries() -> dict[str, list[dict]]:
+    """Return {entry_id: [raw_with_machine_name, ...]} for all other machines."""
+    cfg     = _load_raw()
+    machine = _machine_name()
+    result: dict[str, list[dict]] = {}
+    for mname, mdata in cfg.get("local_data", {}).items():
+        if mname.upper() == machine:
+            continue
+        for raw in mdata.get("symlinks", []):
+            result.setdefault(raw["id"], []).append({**raw, "_machine": mname})
+    return result
+
+
+def normalize_entries() -> tuple[int, int]:
+    """Normalize global ↔ local_data placement for this machine in one pass.
+
+    Demote:         global entries where link or target is not a template → local_data.
+    Promote:        local managed entries where both paths are templates and all machines
+                    have the required bases → global symlinks.
+    Promote scanned: unignored scanned entries whose paths resolve to valid global templates
+                    → global symlinks (auto-managed, removed from scanned list).
+
+    Returns (n_demoted, n_promoted).  n_promoted includes scanned promotions.
+    """
+    cfg     = _load_raw()
+    machine = _machine_name()
+    bases   = get_machine_config() or {}
+
+    # ── Demote ────────────────────────────────────────────────────────────────
+    global_list = cfg.get("symlinks", [])
+    to_keep:   list[dict] = []
+    to_demote: list[dict] = []
+    for raw in global_list:
+        if _is_global(raw.get("link", ""), raw.get("target", "")):
+            to_keep.append(raw)
+        else:
+            to_demote.append(raw)
+
+    if to_demote:
+        cfg["symlinks"] = to_keep
+        local    = _local_data(cfg, machine)
+        existing = {r["id"] for r in local.get("symlinks", [])}
+        for raw in to_demote:
+            if raw["id"] not in existing:
+                local.setdefault("symlinks", []).append(raw)
+
+    # ── Promote managed ───────────────────────────────────────────────────────
+    local      = _local_data(cfg, machine)
+    local_list = local.get("symlinks", [])
+    promoted: list[dict] = []
+    remaining: list[dict] = []
+    for raw in local_list:
+        link_j   = _to_json_path(_resolve(raw["link"],   bases), bases)
+        target_j = _to_json_path(_resolve(raw["target"], bases), bases)
+        if not _is_global(link_j, target_j):
+            remaining.append(raw)
+            continue
+        keys = set(re.findall(r"\{(\w+)\}", link_j + target_j))
+        if _all_machines_have_keys(cfg, keys):
+            raw["link"], raw["target"] = link_j, target_j
+            cfg.setdefault("symlinks", []).append(raw)
+            promoted.append(raw)
+        else:
+            remaining.append(raw)
+    if promoted:
+        local["symlinks"] = remaining
+
+    # ── Promote scanned ───────────────────────────────────────────────────────
+    local        = _local_data(cfg, machine)
+    scanned_list = local.get("scanned", [])
+    kept_scanned: list[dict] = []
+    n_scanned_promoted = 0
+    existing_ids = {r["id"] for r in cfg.get("symlinks", [])} | \
+                   {r["id"] for r in local.get("symlinks", [])}
+    for scan_raw in scanned_list:
+        if scan_raw.get("ignored", False):
+            kept_scanned.append(scan_raw)
+            continue
+        link_j   = _to_json_path(_resolve(scan_raw["link"],   bases), bases)
+        target_j = _to_json_path(_resolve(scan_raw["target"], bases), bases)
+        if not _is_global(link_j, target_j):
+            kept_scanned.append(scan_raw)
+            continue
+        keys = set(re.findall(r"\{(\w+)\}", link_j + target_j))
+        if not _all_machines_have_keys(cfg, keys):
+            kept_scanned.append(scan_raw)
+            continue
+        # Build a unique ID from the link filename
+        base_id  = Path(link_j).name
+        entry_id = base_id
+        counter  = 1
+        while entry_id in existing_ids:
+            entry_id = f"{base_id}-{counter}"
+            counter += 1
+        new_entry = {"id": entry_id, "description": "", "link": link_j, "target": target_j}
+        cfg.setdefault("symlinks", []).append(new_entry)
+        existing_ids.add(entry_id)
+        n_scanned_promoted += 1
+
+    if n_scanned_promoted:
+        local["scanned"] = kept_scanned
+
+    changed = bool(to_demote or promoted or n_scanned_promoted)
+    if changed:
+        _save_raw(cfg)
+    return len(to_demote), len(promoted) + n_scanned_promoted
+
+
+def migrate_to_local_data() -> None:
+    """One-time migration from old format (top-level scanned / machine field)."""
+    cfg     = _load_raw()
+    machine = _machine_name()
+    changed = False
+
+    # Move 'machine'-tagged symlinks into local_data
+    remaining = []
+    for raw in cfg.get("symlinks", []):
+        m = raw.pop("machine", "")
+        if m:
+            _local_data(cfg, m.upper())["symlinks"].append(raw)
+            changed = True
+        else:
+            remaining.append(raw)
+    if changed:
+        cfg["symlinks"] = remaining
+
+    # Move top-level scanned into local_data
+    if "scanned" in cfg:
+        _local_data(cfg, machine)["scanned"] = cfg.pop("scanned")
+        changed = True
+
+    if changed:
+        _save_raw(cfg)
+
+
+def _all_machines_have_keys(cfg: dict, keys: set[str]) -> bool:
+    """True if every registered machine has handled all required template keys.
+
+    A key is "handled" when it's present in the machine config (confirmed or ignored/null).
+    """
+    return all(
+        all(k in (mc or {}) for k in keys)
+        for mc in cfg.get("machines", {}).values()
+    )
+
+
+
+
+def get_machine_config_full() -> Optional[dict[str, Optional[str]]]:
+    """Return all base entries for this machine including ignored (null) ones.
+
+    Returns None if the machine is not registered at all.
+    Ignored bases appear as None values; confirmed bases are path strings.
+    Keys starting with '__' (internal metadata like __drives__) are excluded.
+    """
+    name     = _machine_name()
+    cfg      = _load_raw()
+    machines = {k.upper(): v for k, v in cfg.get("machines", {}).items()}
+    raw      = machines.get(name)
+    if raw is None:
+        return None
+    return {k: v for k, v in raw.items() if not k.startswith("__")}
+
+
+def get_machine_config() -> Optional[dict[str, str]]:
+    """Return confirmed (non-null) base paths for this machine, or None if not registered."""
+    full = get_machine_config_full()
+    if full is None:
+        return None
+    return {k: v for k, v in full.items() if v is not None}
+
+
+def is_registered() -> bool:
+    return get_machine_config_full() is not None
+
+
+def get_base_status() -> dict[str, dict]:
+    """Return per-key status for this machine.
+
+    Each value is {"state": "confirmed"|"ignored"|"pending", "path": str|None}.
+    Includes all keys referenced in global symlinks plus all keys in this machine's config.
+    """
+    full = get_machine_config_full()
+    if full is None:
+        return {}
+    all_keys = get_required_bases() | set(full.keys())
+    result = {}
+    for key in all_keys:
+        if key not in full:
+            result[key] = {"state": "pending", "path": None}
+        elif full[key] is None:
+            result[key] = {"state": "ignored", "path": None}
+        else:
+            result[key] = {"state": "confirmed", "path": full[key]}
+    return result
+
+
+def _get_local_drives() -> list[str]:
+    """Enumerate fixed (non-removable, non-network) drives. Returns ['C:/', 'D:/'] etc."""
+    import ctypes
+    import string
+    DRIVE_FIXED = 3
+    bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+    result = []
+    for i, letter in enumerate(string.ascii_uppercase):
+        if bitmask & (1 << i):
+            root = f"{letter}:/"
+            if ctypes.windll.kernel32.GetDriveTypeW(root) == DRIVE_FIXED:
+                result.append(root)
+    return result
+
+
+def get_machine_drives() -> list[Path]:
+    """Return stored drive roots for this machine; falls back to live detection."""
     name = _machine_name()
     cfg  = _load_raw()
-    machines = {k.upper(): v for k, v in cfg.get("machines", {}).items()}
-    return machines[name]["onedrive"] if name in machines else None
+    raw  = {k.upper(): v for k, v in cfg.get("machines", {}).items()}.get(name) or {}
+    drives = raw.get("__drives__", [])
+    if not drives:
+        drives = _get_local_drives()
+    return [Path(d) for d in drives]
 
 
-def _resolve(template: str, onedrive: str) -> Path:
-    return Path(template.replace("{onedrive}", onedrive))
+def refresh_machine_drives() -> None:
+    """Re-detect local drives and update stored list if changed (called at startup)."""
+    cfg     = _load_raw()
+    machine = _machine_name()
+    entry   = cfg.get("machines", {}).get(machine)
+    if entry is None:
+        return
+    current = _get_local_drives()
+    if entry.get("__drives__") != current:
+        entry["__drives__"] = current
+        _save_raw(cfg)
 
 
-def _to_json_path(p: Path, onedrive: str) -> str:
-    s  = str(p).replace("\\", "/")
-    od = onedrive.replace("\\", "/")
-    if s.startswith(od):
-        s = "{onedrive}" + s[len(od):]
+def register_machine(bases: dict[str, Optional[str]]) -> None:
+    """Write or update the current machine's base paths.
+
+    Values may be path strings (confirmed) or None (ignored/not available on this machine).
+    Also auto-detects and stores local fixed drives under '__drives__'.
+    """
+    cfg           = _load_raw()
+    machine_entry = dict(bases)
+    machine_entry["__drives__"] = _get_local_drives()
+    cfg.setdefault("machines", {})[_machine_name()] = machine_entry
+    _save_raw(cfg)
+
+
+def detect_sync_services() -> dict[str, str]:
+    """Auto-detect installed sync services. Returns {suggested_name: path}."""
+    import base64
+    import winreg
+    found: dict[str, str] = {}
+
+    # OneDrive
+    for reg_path in (
+        r"SOFTWARE\Microsoft\OneDrive",
+        r"SOFTWARE\Microsoft\SkyDrive",
+    ):
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path)
+            val, _ = winreg.QueryValueEx(key, "UserSkyDriveRootFolder")
+            winreg.CloseKey(key)
+            if Path(val).is_dir():
+                found["onedrive"] = val.replace("\\", "/")
+                break
+        except OSError:
+            pass
+    if "onedrive" not in found:
+        default = Path.home() / "OneDrive"
+        if default.is_dir():
+            found["onedrive"] = str(default).replace("\\", "/")
+
+    # Google Drive (DriveFS)
+    gdrive_local = Path(os.environ.get("LOCALAPPDATA", "")) / "Google" / "DriveFS"
+    if gdrive_local.is_dir():
+        for child in gdrive_local.iterdir():
+            if child.is_dir() and (child / "root").is_dir():
+                found["gdrive"] = str(child / "root").replace("\\", "/")
+                break
+
+    # Dropbox
+    host_db = Path(os.environ.get("APPDATA", "")) / "Dropbox" / "host.db"
+    if host_db.exists():
+        try:
+            lines = host_db.read_bytes().splitlines()
+            if len(lines) >= 2:
+                p = base64.b64decode(lines[1]).decode("utf-8")
+                if Path(p).is_dir():
+                    found["dropbox"] = p.replace("\\", "/")
+        except Exception:
+            pass
+
+    # iCloud
+    icloud = Path.home() / "iCloudDrive"
+    if icloud.is_dir():
+        found["icloud"] = str(icloud).replace("\\", "/")
+
+    return found
+
+
+def rebase(old_key: str, new_key: str, new_path: str) -> None:
+    """Promote a parent directory as the new base for an existing base.
+
+    Rewrites {old_key}/X → {new_key}/old_dir_name/X in all symlink paths,
+    registers new_key in machine config, removes old_key.
+    """
+    cfg     = _load_raw()
+    name    = _machine_name()
+    machine = cfg.get("machines", {}).get(name, {})
+    old_path = machine.get(old_key, "")
+    old_dir  = Path(old_path).name   # e.g. "OneDrive" from "C:/WebDrives/OneDrive"
+
+    old_tmpl = "{" + old_key + "}"
+    new_pfx  = "{" + new_key + "}/" + old_dir
+
+    def _rw(s: str) -> str:
+        if s.startswith(old_tmpl):
+            return new_pfx + s[len(old_tmpl):]
+        return s
+
+    def _rw_entry(raw: dict) -> None:
+        raw["link"]   = _rw(raw.get("link", ""))
+        raw["target"] = _rw(raw.get("target", ""))
+        for k, v in raw.get("target_override", {}).items():
+            raw["target_override"][k] = _rw(v)
+
+    for raw in cfg.get("symlinks", []):
+        _rw_entry(raw)
+
+    for mc_data in cfg.get("local_data", {}).values():
+        for raw in mc_data.get("symlinks", []):
+            _rw_entry(raw)
+        for raw in mc_data.get("scanned", []):
+            raw["link"]   = _rw(raw.get("link", ""))
+            raw["target"] = _rw(raw.get("target", ""))
+
+    machine[new_key] = new_path.replace("\\", "/")
+    machine.pop(old_key, None)
+    cfg.setdefault("machines", {})[name] = machine
+    _save_raw(cfg)
+
+
+def demote_base_entries(keys: set[str]) -> int:
+    """Globally demote entries referencing keys from global symlinks into each machine's local_data.
+
+    For each machine that has any of keys configured (non-null), entries are written
+    with all template paths fully resolved to that machine's absolute paths.
+    Machines that don't have any of keys configured are skipped.
+    Returns number of entries demoted.
+    """
+    cfg = _load_raw()
+    to_keep: list[dict] = []
+    to_demote: list[dict] = []
+    for raw in cfg.get("symlinks", []):
+        used: set[str] = set(re.findall(r"\{(\w+)\}", raw.get("link", "") + raw.get("target", "")))
+        for v in raw.get("target_override", {}).values():
+            used.update(re.findall(r"\{(\w+)\}", v))
+        if used & keys:
+            to_demote.append(raw)
+        else:
+            to_keep.append(raw)
+    if to_demote:
+        cfg["symlinks"] = to_keep
+        for mc_name, mc_config in cfg.get("machines", {}).items():
+            mc_bases = {k: v for k, v in mc_config.items()
+                        if v is not None and not k.startswith("__")}
+            if not any(k in mc_bases for k in keys):
+                continue
+            local    = _local_data(cfg, mc_name)
+            existing = {r["id"] for r in local.get("symlinks", [])}
+            for raw in to_demote:
+                if raw["id"] in existing:
+                    continue
+                raw_copy = dict(raw)
+                raw_copy["link"]   = str(_resolve(raw["link"],   mc_bases)).replace("\\", "/")
+                raw_copy["target"] = str(_resolve(raw["target"], mc_bases)).replace("\\", "/")
+                if "target_override" in raw:
+                    raw_copy["target_override"] = {
+                        k: str(_resolve(v, mc_bases)).replace("\\", "/")
+                        for k, v in raw["target_override"].items()
+                    }
+                local.setdefault("symlinks", []).append(raw_copy)
+        _save_raw(cfg)
+    return len(to_demote)
+
+
+def demote_base_entries_local(keys: set[str]) -> int:
+    """Copy global entries using keys into THIS machine's local_data with resolved absolute paths.
+
+    Global entries are kept intact for other machines to continue using.
+    Only processes keys that this machine has a real (non-null) path for.
+    Returns number of entries copied.
+    """
+    cfg       = _load_raw()
+    machine   = _machine_name()
+    mc_config = cfg.get("machines", {}).get(machine, {})
+    # Only the keys being removed that this machine actually had a real path for
+    keys_with_path = {k for k in keys
+                      if mc_config.get(k) not in (None, "") and not k.startswith("__")}
+    if not keys_with_path:
+        return 0
+    # Resolve using ALL of this machine's bases so the result is fully absolute
+    mc_bases = {k: v for k, v in mc_config.items()
+                if v is not None and not k.startswith("__")}
+    to_copy: list[dict] = []
+    for raw in cfg.get("symlinks", []):
+        used: set[str] = set(re.findall(r"\{(\w+)\}", raw.get("link", "") + raw.get("target", "")))
+        for v in raw.get("target_override", {}).values():
+            used.update(re.findall(r"\{(\w+)\}", v))
+        if used & keys_with_path:
+            to_copy.append(raw)
+    if to_copy:
+        local    = _local_data(cfg, machine)
+        existing = {r["id"] for r in local.get("symlinks", [])}
+        for raw in to_copy:
+            if raw["id"] in existing:
+                continue
+            raw_copy = dict(raw)
+            raw_copy["link"]   = str(_resolve(raw["link"],   mc_bases)).replace("\\", "/")
+            raw_copy["target"] = str(_resolve(raw["target"], mc_bases)).replace("\\", "/")
+            if "target_override" in raw:
+                raw_copy["target_override"] = {
+                    k: str(_resolve(v, mc_bases)).replace("\\", "/")
+                    for k, v in raw["target_override"].items()
+                }
+            local.setdefault("symlinks", []).append(raw_copy)
+        _save_raw(cfg)
+    return len(to_copy)
+
+
+def get_required_bases() -> set[str]:
+    """Return all {key} template names referenced in global symlink paths."""
+    cfg  = _load_raw()
+    keys: set[str] = set()
+    for raw in cfg.get("symlinks", []):
+        for field in ("link", "target"):
+            keys.update(re.findall(r"\{(\w+)\}", raw.get(field, "")))
+        for v in raw.get("target_override", {}).values():
+            keys.update(re.findall(r"\{(\w+)\}", v))
+    return keys
+
+
+def get_pending_bases() -> set[str]:
+    """Return base keys used globally but neither confirmed nor ignored on this machine."""
+    required = get_required_bases()
+    full     = get_machine_config_full() or {}
+    return required - set(full.keys())
+
+
+def get_onedrive() -> Optional[str]:
+    """Backward-compat: return the 'onedrive' base path, or None."""
+    cfg = get_machine_config()
+    return cfg.get("onedrive") if cfg else None
+
+
+def _resolve(template: str, bases: dict[str, str]) -> Path:
+    """Replace any {key} in template using the bases dict."""
+    s = template
+    for key, path in bases.items():
+        s = s.replace("{" + key + "}", path)
+    return Path(s)
+
+
+def _to_json_path(p: Path, bases: dict[str, str]) -> str:
+    """Convert absolute path to template form using the longest matching base."""
+    s = str(p).replace("\\", "/")
+    for prefix in ("//?/", "//./"):
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
+    best_key = None
+    best_len = 0
+    for key, base in bases.items():
+        b = base.replace("\\", "/").rstrip("/")
+        if s.lower().startswith(b.lower() + "/") or s.lower() == b.lower():
+            if len(b) > best_len:
+                best_key = key
+                best_len = len(b)
+    if best_key:
+        b = bases[best_key].replace("\\", "/").rstrip("/")
+        return "{" + best_key + "}" + s[best_len:]
     return s
 
 
@@ -153,24 +633,36 @@ def _detect_status(link: Path, target: Path) -> Status:
 # ── Public read API ───────────────────────────────────────────────────────────
 
 def check_all() -> list[LinkEntry]:
-    onedrive = get_onedrive()
-    if onedrive is None:
+    full_config = get_machine_config_full()
+    if full_config is None:
         return []
+    bases        = {k: v for k, v in full_config.items() if v is not None}
+    ignored_keys = {k for k, v in full_config.items() if v is None}
+
     cfg     = _load_raw()
     machine = _machine_name()
+    # Combine global symlinks + this machine's local symlinks
+    all_raws = list(cfg.get("symlinks", []))
+    all_raws += cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])
+
     entries = []
-    for raw in cfg.get("symlinks", []):
+    for raw in all_raws:
         raw_target = raw["target"]
         overrides  = {k.upper(): v for k, v in raw.get("target_override", {}).items()}
         if machine in overrides:
             raw_target = overrides[machine]
-        link   = _resolve(raw["link"],   onedrive)
-        target = _resolve(raw_target,    onedrive)
+        # Skip entries whose required base is explicitly ignored on this machine
+        required = set(re.findall(r"\{(\w+)\}", raw["link"] + raw_target))
+        if required & ignored_keys:
+            continue
+        link   = _resolve(raw["link"],  bases)
+        target = _resolve(raw_target,   bases)
         status = _detect_status(link, target)
         try:
             t_empty = status == Status.OK and target.is_dir() and not any(target.iterdir())
         except OSError:
             t_empty = False
+        m_specific = not raw["link"].startswith("{") or not raw_target.startswith("{")
         entries.append(LinkEntry(
             id=raw["id"],
             description=raw.get("description", ""),
@@ -178,6 +670,7 @@ def check_all() -> list[LinkEntry]:
             target=target,
             status=status,
             target_empty=t_empty,
+            machine_specific=m_specific,
         ))
     return entries
 
@@ -202,6 +695,15 @@ def sync_all() -> SyncResult:
 
 # ── Write API ─────────────────────────────────────────────────────────────────
 
+def get_all_entry_ids() -> set[str]:
+    """Return all entry IDs from global symlinks and this machine's local_data."""
+    cfg     = _load_raw()
+    machine = _machine_name()
+    ids = {r["id"] for r in cfg.get("symlinks", [])}
+    ids |= {r["id"] for r in cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])}
+    return ids
+
+
 def create_entry(entry_id: str, description: str, link: Path, target: Path,
                  force_overwrite: bool = False) -> tuple[bool, str]:
     """Append a new entry to symlinks.json and create the junction.
@@ -213,12 +715,15 @@ def create_entry(entry_id: str, description: str, link: Path, target: Path,
     if not entry_id:
         return False, "编号不能为空"
 
-    cfg      = _load_raw()
-    onedrive = get_onedrive()
-    if onedrive is None:
+    cfg   = _load_raw()
+    bases = get_machine_config()
+    if not bases:
         return False, "当前机器未在 symlinks.json 中注册"
 
-    if any(r["id"] == entry_id for r in cfg.get("symlinks", [])):
+    machine = _machine_name()
+    all_ids = {r["id"] for r in cfg.get("symlinks", [])}
+    all_ids |= {r["id"] for r in cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])}
+    if entry_id in all_ids:
         return False, f"编号 '{entry_id}' 已存在"
 
     # ── Handle existing content at link path ──────────────────────────────────
@@ -240,12 +745,19 @@ def create_entry(entry_id: str, description: str, link: Path, target: Path,
             link.unlink(missing_ok=True)
 
     # ── Write JSON ────────────────────────────────────────────────────────────
-    cfg.setdefault("symlinks", []).append({
+    link_json   = _to_json_path(link,   bases)
+    target_json = _to_json_path(target, bases)
+    new_entry: dict = {
         "id":          entry_id,
         "description": description,
-        "link":        _to_json_path(link,   onedrive),
-        "target":      _to_json_path(target, onedrive),
-    })
+        "link":        link_json,
+        "target":      target_json,
+    }
+    # Route to global symlinks or machine-local depending on path templates
+    if _is_global(link_json, target_json):
+        cfg.setdefault("symlinks", []).append(new_entry)
+    else:
+        _local_data(cfg, _machine_name())["symlinks"].append(new_entry)
     _save_raw(cfg)
 
     # ── Create junction ───────────────────────────────────────────────────────
@@ -259,22 +771,27 @@ def create_entry(entry_id: str, description: str, link: Path, target: Path,
 
 def delete_entry(entry_id: str, remove_junction: bool = True) -> tuple[bool, str]:
     """Remove entry from symlinks.json and optionally delete the junction."""
-    cfg      = _load_raw()
-    onedrive = get_onedrive()
+    cfg   = _load_raw()
+    bases = get_machine_config()
 
-    original = cfg.get("symlinks", [])
-    remaining = [r for r in original if r["id"] != entry_id]
-    if len(remaining) == len(original):
+    machine  = _machine_name()
+    global_list = cfg.get("symlinks", [])
+    local_list  = cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])
+
+    deleted_raw = next((r for r in global_list if r["id"] == entry_id), None) or \
+                  next((r for r in local_list  if r["id"] == entry_id), None)
+    if not deleted_raw:
         return False, f"编号 '{entry_id}' 不存在"
 
-    if remove_junction and onedrive:
-        deleted = next(r for r in original if r["id"] == entry_id)
-        machine   = _machine_name()
-        raw_link  = deleted["link"]
-        link_path = _resolve(raw_link, onedrive)
+    if remove_junction and bases:
+        link_path = _resolve(deleted_raw["link"], bases)
         _remove_link(link_path)
 
-    cfg["symlinks"] = remaining
+    cfg["symlinks"] = [r for r in global_list if r["id"] != entry_id]
+    if machine in cfg.get("local_data", {}):
+        cfg["local_data"][machine]["symlinks"] = [
+            r for r in local_list if r["id"] != entry_id
+        ]
     _save_raw(cfg)
     return True, ""
 
@@ -289,31 +806,34 @@ def edit_entry(entry_id: str,
                new_id:          Optional[str]  = None,
                new_link:        Optional[Path]  = None,
                force_overwrite: bool = False) -> bool:
-    cfg      = _load_raw()
-    onedrive = get_onedrive()
-    if onedrive is None:
+    cfg   = _load_raw()
+    bases = get_machine_config()
+    if not bases:
         return False
 
     target_changed = False
     link_changed   = False
     old_link: Optional[Path] = None
     found = False
+    machine = _machine_name()
 
-    for raw in cfg["symlinks"]:
+    # Search both global symlinks and local_data for this machine
+    local_list = cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])
+    for raw in list(cfg.get("symlinks", [])) + local_list:
         if raw["id"] != entry_id:
             continue
         found = True
         if new_description is not None:
             raw["description"] = new_description
         if new_target is not None:
-            s = _to_json_path(new_target, onedrive)
+            s = _to_json_path(new_target, bases)
             if raw.get("target") != s:
                 raw["target"] = s
                 target_changed = True
         if new_link is not None:
-            s = _to_json_path(new_link, onedrive)
+            s = _to_json_path(new_link, bases)
             if raw.get("link") != s:
-                old_link = _resolve(raw["link"], onedrive)
+                old_link = _resolve(raw["link"], bases)
                 raw["link"] = s
                 link_changed = True
         if new_id is not None and new_id != entry_id:
@@ -362,6 +882,84 @@ def edit_entry(entry_id: str,
     return True
 
 
+# ── Scanned-entry helpers ─────────────────────────────────────────────────────
+
+def get_scanned() -> list[dict]:
+    machine = _machine_name()
+    return _load_raw().get("local_data", {}).get(machine, {}).get("scanned", [])
+
+
+def save_scanned(entries: list[dict]) -> None:
+    cfg = _load_raw()
+    _local_data(cfg, _machine_name())["scanned"] = entries
+    _save_raw(cfg)
+
+
+def merge_scanned(new_entries: list[dict]) -> None:
+    """Merge new scan results into this machine's local scanned list."""
+    cfg      = _load_raw()
+    ld       = _local_data(cfg, _machine_name())
+    existing = ld.get("scanned", [])
+    existing_map = {(e["link"], e["target"]): e for e in existing}
+    for entry in new_entries:
+        key = (entry["link"], entry["target"])
+        if key not in existing_map:
+            existing_map[key] = entry
+    ld["scanned"] = list(existing_map.values())
+    _save_raw(cfg)
+
+
+def import_scanned_entry(link_str: str, target_str: str,
+                          entry_id: str, description: str) -> tuple[bool, str]:
+    """Move a scanned entry into managed symlinks and create the junction."""
+    cfg   = _load_raw()
+    bases = get_machine_config()
+    if not bases:
+        return False, "当前机器未注册"
+
+    # Remove from this machine's local scanned list
+    ld = _local_data(cfg, _machine_name())
+    ld["scanned"] = [e for e in ld.get("scanned", [])
+                     if not (e["link"] == link_str and e["target"] == target_str)]
+
+    # Re-apply template using current bases (stored path may be absolute)
+    link   = _resolve(link_str,   bases)
+    target = _resolve(target_str, bases)
+    link_stored   = _to_json_path(link,   bases)
+    target_stored = _to_json_path(target, bases)
+
+    new_entry = {
+        "id": entry_id,
+        "description": description,
+        "link": link_stored,
+        "target": target_stored,
+    }
+    if _is_global(link_stored, target_stored):
+        cfg.setdefault("symlinks", []).append(new_entry)
+    else:
+        ld["symlinks"].append(new_entry)
+    _save_raw(cfg)
+
+    if target.exists() and not (link.is_junction() and link.exists()):
+        if os.path.lexists(link):
+            _remove_link(link)
+        ok, err = _create_junction(link, target)
+        if not ok:
+            return False, f"配置已保存，但创建 Junction 失败：{err}"
+    return True, ""
+
+
+def ignore_scanned_entry(link_str: str, target_str: str) -> None:
+    """Mark a scanned entry as ignored (user does not want to manage it)."""
+    cfg = _load_raw()
+    ld  = _local_data(cfg, _machine_name())
+    for e in ld.get("scanned", []):
+        if e["link"] == link_str and e["target"] == target_str:
+            e["ignored"] = True
+            break
+    _save_raw(cfg)
+
+
 # ── Smart sync (JSON-change triggered) ───────────────────────────────────────
 
 def smart_sync(known_ids: set[str]) -> SyncResult:
@@ -390,31 +988,31 @@ def smart_sync(known_ids: set[str]) -> SyncResult:
 def collect_watch_dirs(entries: list[LinkEntry]) -> dict[Path, bool]:
     """Maps directory → recursive.
 
-    OneDrive paths: a single recursive watch on the OneDrive root covers all moves
-    within OneDrive (including cross-sub-directory moves that don't fire on_moved
-    under non-recursive watches).
-
-    Non-OneDrive paths: individual ancestor dirs with recursive=False.
+    All registered base paths get a single recursive watch (covers all moves
+    within the cloud-sync directory). Non-base paths get individual non-recursive
+    ancestor watches.
     """
-    onedrive_path = get_onedrive()
-    od_root = Path(onedrive_path).resolve() if onedrive_path else None
+    cfg   = get_machine_config() or {}
+    bases = {Path(v).resolve(): True for v in cfg.values() if v}
     result: dict[Path, bool] = {}
 
     for e in entries:
         for path in (e.link, e.target):
-            if od_root:
+            matched = False
+            for base_root in bases:
                 try:
-                    path.relative_to(od_root)
-                    result[od_root] = True   # one recursive watch covers entire OneDrive tree
-                    continue
+                    path.relative_to(base_root)
+                    result[base_root] = True
+                    matched = True
+                    break
                 except ValueError:
                     pass
-            # Non-OneDrive path: individual non-recursive ancestor watches
-            for ancestor in path.parents:
-                if ancestor.parent == ancestor:   # drive root
-                    break
-                if ancestor not in result:
-                    result[ancestor] = False
+            if not matched:
+                for ancestor in path.parents:
+                    if ancestor.parent == ancestor:   # drive root
+                        break
+                    if ancestor not in result:
+                        result[ancestor] = False
 
     return result
 
@@ -422,22 +1020,22 @@ def collect_watch_dirs(entries: list[LinkEntry]) -> dict[Path, bool]:
 def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], list[str]]:
     """Batch-update all JSON paths prefixed by old_base → new_base, then rebuild junctions.
     Returns (updated_ids, failed_ids)."""
-    cfg      = _load_raw()
-    onedrive = get_onedrive()
-    if onedrive is None:
+    cfg   = _load_raw()
+    bases = get_machine_config()
+    if not bases:
         return [], []
 
     old_base = Path(old_base_str)
     new_base = Path(new_base_str)
     machine  = _machine_name()
 
-    affected: dict[str, dict] = {}   # entry_id → {link?, old_link?, target?, target_override?}
+    affected: dict[str, dict] = {}
 
     for raw in cfg.get("symlinks", []):
         eid = raw["id"]
         ch: dict = {}
 
-        link_path = _resolve(raw["link"], onedrive)
+        link_path = _resolve(raw["link"], bases)
         try:
             rel = link_path.relative_to(old_base)
             ch["link"]     = new_base / rel
@@ -450,7 +1048,7 @@ def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], lis
         use_override = machine in overrides
         if use_override:
             raw_target = overrides[machine]
-        target_path = _resolve(raw_target, onedrive)
+        target_path = _resolve(raw_target, bases)
         try:
             rel = target_path.relative_to(old_base)
             ch["target"]          = new_base / rel
@@ -469,9 +1067,9 @@ def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], lis
         if ch is None:
             continue
         if "link" in ch:
-            raw["link"] = _to_json_path(ch["link"], onedrive)
+            raw["link"] = _to_json_path(ch["link"], bases)
         if "target" in ch:
-            s = _to_json_path(ch["target"], onedrive)
+            s = _to_json_path(ch["target"], bases)
             if ch.get("target_override"):
                 for k in raw.get("target_override", {}):
                     if k.upper() == machine:
@@ -532,14 +1130,28 @@ def find_renamed_junction(entry: LinkEntry) -> Optional[Path]:
 
 
 def rename_link_in_json(entry_id: str, new_link: Path) -> bool:
-    """Update only the link path in JSON; does not touch the filesystem."""
-    cfg      = _load_raw()
-    onedrive = get_onedrive()
-    if onedrive is None:
+    """Update only the link path in JSON; does not touch the filesystem.
+
+    Searches both global symlinks and this machine's local_data.
+    Global ↔ local_data normalisation is handled by normalize_entries().
+    """
+    cfg     = _load_raw()
+    bases   = get_machine_config() or {}
+    if not bases:
         return False
+    machine      = _machine_name()
+    new_link_str = _to_json_path(new_link, bases)
+
     for raw in cfg.get("symlinks", []):
         if raw["id"] == entry_id:
-            raw["link"] = _to_json_path(new_link, onedrive)
+            raw["link"] = new_link_str
             _save_raw(cfg)
             return True
+
+    for raw in cfg.get("local_data", {}).get(machine, {}).get("symlinks", []):
+        if raw["id"] == entry_id:
+            raw["link"] = new_link_str
+            _save_raw(cfg)
+            return True
+
     return False

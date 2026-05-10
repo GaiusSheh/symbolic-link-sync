@@ -9,7 +9,10 @@ from typing import Callable
 
 logger = logging.getLogger(__name__)
 
-from symlink_manager import ERR_LINK_NONEMPTY, LinkEntry, Status, create_entry, delete_entry, edit_entry  # noqa: F401
+from symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa: F401
+                              create_entry, delete_entry, edit_entry,
+                              get_scanned, get_machine_config,
+                              get_other_machines_local_entries)
 
 _STATUS_LABEL = {
     Status.OK:      "✅ 正常",
@@ -41,13 +44,17 @@ class StatusWindow:
     def __init__(self, root: tk.Tk, on_sync: Callable,
                  on_refresh_needed: Callable, on_open_settings: Callable,
                  on_entry_saved: Callable[[str], None] | None = None,
-                 on_relink: Callable[[str], None] | None = None):
+                 on_relink: Callable[[str], None] | None = None,
+                 on_open_scan: Callable | None = None,
+                 on_manage_bases: Callable | None = None):
         self._root = root
         self._on_sync = on_sync
         self._on_refresh_needed = on_refresh_needed
         self._on_open_settings = on_open_settings
         self._on_entry_saved = on_entry_saved
         self._on_relink = on_relink
+        self._on_open_scan = on_open_scan
+        self._on_manage_bases = on_manage_bases
         self._confirmed_empty: set[str] = set()
         self._win: tk.Toplevel | None = None
         self._tree: ttk.Treeview | None = None
@@ -128,10 +135,14 @@ class StatusWindow:
         tree.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
         sb.grid(row=0,  column=1, sticky="ns",   pady=8, padx=(0, 4))
 
-        tree.tag_configure("broken",       background="#FFEBEE")
-        tree.tag_configure("pending",      background="#E8F5E9")
-        tree.tag_configure("missing",      background="#FFFDE7")
-        tree.tag_configure("ok_empty",     background="#FFF3E0")
+        tree.tag_configure("broken",         background="#FFCDD2")  # red
+        tree.tag_configure("missing",        background="#FFEBEE")  # red (lighter)
+        tree.tag_configure("pending",        background="#FFF9C4")  # yellow
+        tree.tag_configure("ok_empty",       background="#FFF3E0")  # amber
+        tree.tag_configure("unmanaged_scan",  background="#FFF9C4")
+        tree.tag_configure("separator",       background="#ECEFF1", foreground="#90A4AE")
+        tree.tag_configure("offline_pending", background="#F3E5F5")
+        tree.tag_configure("offline_done",    background="#E8EAF6")
 
         ttk.Label(win, text="双击任意行可编辑", foreground="gray").grid(
             row=1, column=0, columnspan=2, sticky="w", padx=10)
@@ -141,6 +152,8 @@ class StatusWindow:
 
         ttk.Button(btn_frame, text="新建",            command=self._open_new_dialog).pack(side="left", padx=4)
         ttk.Button(btn_frame, text="立即同步",         command=self._on_sync).pack(side="left", padx=4)
+        ttk.Button(btn_frame, text="扫描链接",         command=self._open_scan).pack(side="left", padx=4)
+        ttk.Button(btn_frame, text="管理同步目录",      command=self._open_manage_bases).pack(side="left", padx=4)
         ttk.Button(btn_frame, text="打开配置文件",      command=self._open_json).pack(side="left", padx=4)
         ttk.Button(btn_frame, text="设置...",          command=self._on_open_settings).pack(side="left", padx=4)
 
@@ -157,8 +170,13 @@ class StatusWindow:
         tree = self._tree
         for row in tree.get_children():
             tree.delete(row)
-        od = _onedrive_root()
-        for e in entries:
+        od = _get_bases()
+
+        # ── Managed entries ───────────────────────────────────────────────────
+        global_entries = [e for e in entries if not e.machine_specific]
+        local_entries  = [e for e in entries if e.machine_specific]
+
+        def _insert_entry(e: LinkEntry):
             if e.status == Status.OK and e.target_empty and e.id not in self._confirmed_empty:
                 tag   = "ok_empty"
                 label = "⚠️ 空目标"
@@ -171,14 +189,71 @@ class StatusWindow:
                                 _shorten(str(e.target), od)),
                         tags=(tag,))
 
+        for e in global_entries:
+            _insert_entry(e)
+
+        if local_entries:
+            tree.insert("", "end", iid="__local_sep__",
+                        values=("", "── 本机管理 ──", "", "", ""),
+                        tags=("separator",))
+            for e in local_entries:
+                _insert_entry(e)
+
+        # ── Unmanaged scanned entries ─────────────────────────────────────────
+        managed_links = {str(e.link).lower() for e in entries}
+        scanned = [s for s in get_scanned()
+                   if not s.get("ignored")
+                   and _resolve_link(s["link"], od).lower() not in managed_links]
+
+        if scanned:
+            tree.insert("", "end", iid="__scan_sep__",
+                        values=("", "── 未管理的扫描结果 ──", "", "", ""),
+                        tags=("separator",))
+            for s in scanned:
+                iid = "scan::" + s["link"] + "||" + s["target"]
+                tree.insert("", "end", iid=iid,
+                            values=("🔍 未管理", s["link"].split("/")[-1],
+                                    "",
+                                    _shorten(s["link"], od),
+                                    _shorten(s["target"], od)),
+                            tags=("unmanaged_scan",))
+
+        # ── Offline-configured entries (other machines' local symlinks) ──────────
+        my_ids  = {e.id for e in entries}
+        other   = get_other_machines_local_entries()
+        pending = {eid: ml for eid, ml in other.items() if eid not in my_ids}
+        if pending:
+            tree.insert("", "end", iid="__offline_sep__",
+                        values=("", "── 离线配置 ──", "", "", ""),
+                        tags=("separator",))
+            for eid, machine_entries in sorted(pending.items()):
+                machines_str = "、".join(e["_machine"] for e in machine_entries)
+                tree.insert("", "end", iid=f"offline::{eid}",
+                            values=("□ 待配置", eid, machines_str, "", ""),
+                            tags=("offline_pending",))
+
     # ── Actions ──────────────────────────────────────────────────────────────
+
+    def _open_scan(self):
+        if self._on_open_scan:
+            self._on_open_scan()
+
+    def _open_manage_bases(self):
+        if self._on_manage_bases:
+            self._on_manage_bases()
 
     def _open_json(self):
         os.startfile(str(_JSON_PATH))
 
     def _on_double_click(self, event):
         item = self._tree.identify_row(event.y)
-        if not item:
+        if not item or item in ("__scan_sep__", "__offline_sep__", "__local_sep__"):
+            return
+        if item.startswith("scan::"):
+            self._open_import_dialog(item)
+            return
+        if item.startswith("offline::"):
+            self._open_offline_entry_dialog(item.removeprefix("offline::"))
             return
         entry = next((e for e in self._entries if e.id == item), None)
         if entry:
@@ -186,9 +261,19 @@ class StatusWindow:
 
     def _on_right_click(self, event):
         item = self._tree.identify_row(event.y)
-        if not item:
+        if not item or item in ("__scan_sep__", "__offline_sep__", "__local_sep__"):
             return
         self._tree.selection_set(item)
+        if item.startswith("scan::"):
+            self._scan_context_menu(event, item)
+            return
+        if item.startswith("offline::"):
+            entry_id = item.removeprefix("offline::")
+            menu = tk.Menu(self._win, tearoff=0)
+            menu.add_command(label="配置到本机...",
+                             command=lambda: self._open_offline_entry_dialog(entry_id))
+            menu.tk_popup(event.x_root, event.y_root)
+            return
         entry = next((e for e in self._entries if e.id == item), None)
         if not entry:
             return
@@ -211,6 +296,179 @@ class StatusWindow:
         menu.add_command(label="删除管理和目录",
                          command=lambda: self._delete_entry(entry, remove_junction=True))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _scan_context_menu(self, event, iid):
+        _, _, rest = iid.partition("::")
+        link_str, _, target_str = rest.partition("||")
+        menu = tk.Menu(self._win, tearoff=0)
+        menu.add_command(label="导入管理",
+                         command=lambda: self._open_import_dialog(iid))
+        menu.add_command(label="不管理",
+                         command=lambda: self._do_ignore_scan(link_str, target_str, iid))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _open_offline_entry_dialog(self, entry_id: str):
+        """Show per-machine configs for an offline entry and allow configuring locally."""
+        from symlink_manager import _resolve, get_other_machines_local_entries
+        import tkinter.ttk as _ttk
+
+        other = get_other_machines_local_entries()
+        machine_entries = other.get(entry_id, [])
+        if not machine_entries:
+            return
+
+        dlg = tk.Toplevel(self._win)
+        dlg.title(f"{entry_id} — 各计算机配置参考")
+        dlg.resizable(True, False)
+        dlg.transient(self._win)
+        dlg.grab_set()
+
+        od = _get_bases()
+
+        # ── Reference table ───────────────────────────────────────────────────
+        ref = _ttk.LabelFrame(dlg, text="其他计算机配置", padding=8)
+        ref.pack(fill="x", padx=12, pady=(12, 4))
+
+        for col, w in [("计算机", 120), ("链接路径", 280), ("目标路径", 280)]:
+            _ttk.Label(ref, text=col, font=("Segoe UI", 9, "bold"), width=w//8).pack(side="left", padx=4)
+        ref_tree = _ttk.Treeview(ref, columns=("机器", "链接", "目标"),
+                                  show="headings", height=len(machine_entries))
+        ref_tree.heading("机器", text="计算机", anchor="w")
+        ref_tree.heading("链接", text="链接路径", anchor="w")
+        ref_tree.heading("目标", text="目标路径", anchor="w")
+        ref_tree.column("机器", width=120, stretch=False)
+        ref_tree.column("链接", width=280)
+        ref_tree.column("目标", width=280)
+
+        for me in machine_entries:
+            ref_tree.insert("", "end", values=(
+                me["_machine"],
+                _shorten(me.get("link", ""), od),
+                _shorten(me.get("target", ""), od),
+            ))
+        ref_tree.pack(fill="x", pady=(4, 0))
+
+        # ── Pre-fill logic ─────────────────────────────────────────────────────
+        bases = get_machine_config() or {}
+        src   = machine_entries[0]
+
+        def _try(template: str) -> str:
+            resolved = str(_resolve(template, bases))
+            return "" if "{" in resolved else resolved
+
+        pre_link   = _try(src.get("link",   ""))
+        pre_target = _try(src.get("target", ""))
+        pre_desc   = src.get("description", "")
+
+        # ── Config form ───────────────────────────────────────────────────────
+        sep = _ttk.Separator(dlg, orient="horizontal")
+        sep.pack(fill="x", padx=12, pady=6)
+
+        _, id_var, desc_text, target_var, link_var = self._build_entry_form(
+            dlg,
+            id_val=entry_id,
+            desc_val=pre_desc,
+            target_val=pre_target,
+            link_val=pre_link,
+        )
+
+        btn_row = _ttk.Frame(dlg, padding=(12, 0, 12, 12))
+        btn_row.pack(fill="x")
+
+        def confirm(force: bool = False):
+            eid        = id_var.get().strip()
+            desc       = desc_text.get("1.0", "end-1c").strip()
+            target_path = Path(target_var.get().strip())
+            link_path   = Path(link_var.get().strip())
+
+            if not eid or not str(target_path).strip() or not str(link_path).strip():
+                messagebox.showwarning("输入不完整", "名称、链接路径和目标路径均为必填。", parent=dlg)
+                return
+
+            if not force and link_path.exists() and not link_path.is_junction():
+                try:
+                    non_empty = any(link_path.iterdir())
+                except OSError:
+                    non_empty = False
+                if non_empty:
+                    if not messagebox.askyesno("路径已存在",
+                                               f"链接路径已存在非空目录：\n{link_path}\n\n删除并建立链接？",
+                                               icon="warning", parent=dlg):
+                        return
+                    confirm(force=True); return
+
+            from symlink_manager import create_entry, ERR_LINK_NONEMPTY
+            ok, err = create_entry(eid, desc, link_path, target_path, force_overwrite=force)
+            if ok:
+                dlg.destroy()
+                self._on_refresh_needed()
+            elif err == ERR_LINK_NONEMPTY:
+                if messagebox.askyesno("目录非空", f"{link_path}\n已存在且不为空，确认清空并建立链接？",
+                                       icon="warning", parent=dlg):
+                    confirm(force=True)
+            else:
+                messagebox.showerror("配置失败", err, parent=dlg)
+
+        _ttk.Button(btn_row, text="取消",     command=dlg.destroy, width=8).pack(side="right", padx=(6, 0))
+        _ttk.Button(btn_row, text="配置到本机", command=confirm,    width=12).pack(side="right")
+
+        dlg.update_idletasks()
+        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
+        w, h   = dlg.winfo_width(), dlg.winfo_height()
+        dlg.geometry(f"+{(sw-w)//2}+{(sh-h)//2}")
+
+    def _open_import_dialog(self, iid):
+        from symlink_manager import import_scanned_entry
+        _, _, rest = iid.partition("::")
+        link_str, _, target_str = rest.partition("||")
+
+        dlg = tk.Toplevel(self._win)
+        dlg.title("导入为管理条目")
+        dlg.resizable(False, False)
+        dlg.transient(self._win)
+        dlg.grab_set()
+
+        import tkinter.ttk as ttk_dlg
+        outer = ttk_dlg.Frame(dlg, padding=16)
+        outer.pack(fill="both", expand=True)
+        outer.columnconfigure(1, weight=1)
+
+        bases = _get_bases()
+        ttk_dlg.Label(outer, text="链接路径：", anchor="e").grid(row=0, column=0, sticky="e", padx=(0,8))
+        ttk_dlg.Label(outer, text=_shorten(link_str, bases), anchor="w").grid(row=0, column=1, sticky="w")
+        ttk_dlg.Label(outer, text="目标路径：", anchor="e").grid(row=1, column=0, sticky="e", padx=(0,8))
+        ttk_dlg.Label(outer, text=_shorten(target_str, bases), anchor="w").grid(row=1, column=1, sticky="w")
+
+        ttk_dlg.Label(outer, text="名称（必填）：", anchor="e").grid(row=2, column=0, sticky="e", padx=(0,8), pady=(12,4))
+        id_var = tk.StringVar()
+        ttk_dlg.Entry(outer, textvariable=id_var, width=36).grid(row=2, column=1, sticky="ew", pady=(12,4))
+
+        ttk_dlg.Label(outer, text="描述（可选）：", anchor="e").grid(row=3, column=0, sticky="e", padx=(0,8), pady=4)
+        desc_var = tk.StringVar()
+        ttk_dlg.Entry(outer, textvariable=desc_var, width=36).grid(row=3, column=1, sticky="ew", pady=4)
+
+        btn_row = ttk_dlg.Frame(outer)
+        btn_row.grid(row=4, column=0, columnspan=2, sticky="e", pady=(12,0))
+
+        def confirm():
+            eid = id_var.get().strip()
+            if not eid:
+                messagebox.showwarning("名称不能为空", "请填写名称。", parent=dlg)
+                return
+            ok, err = import_scanned_entry(link_str, target_str, eid, desc_var.get().strip())
+            if ok:
+                dlg.destroy()
+                self._on_refresh_needed()
+            else:
+                messagebox.showerror("导入失败", err, parent=dlg)
+
+        ttk_dlg.Button(btn_row, text="取消", command=dlg.destroy, width=8).pack(side="right", padx=(6,0))
+        ttk_dlg.Button(btn_row, text="导入", command=confirm, width=8).pack(side="right")
+
+    def _do_ignore_scan(self, link_str, target_str, iid):
+        from symlink_manager import ignore_scanned_entry
+        ignore_scanned_entry(link_str, target_str)
+        self._on_refresh_needed()
 
     def _relink_entry(self, entry):
         if self._on_relink:
@@ -349,6 +607,24 @@ class StatusWindow:
                         return
                     force = True
 
+            # Warn if entry would move from global to machine-specific
+            from symlink_manager import _to_json_path, _is_global
+            bases = _get_bases()
+            new_link_json   = _to_json_path(new_link,   bases) if bases else str(new_link)
+            new_target_json = _to_json_path(new_target, bases) if bases else str(new_target)
+            was_global = entry.id in {
+                r["id"] for r in __import__("symlink_manager")._load_raw().get("symlinks", [])
+            }
+            will_be_local = not _is_global(new_link_json, new_target_json)
+            if was_global and will_be_local:
+                if not messagebox.askyesno(
+                    "变为本机独有配置",
+                    "修改后该条目将包含本机特定路径，\n"
+                    "变为本机独有配置，其他计算机将不再看到它。\n\n确认继续？",
+                    icon="warning", parent=dlg,
+                ):
+                    return
+
             logger.info("calling edit_entry force=%s", force)
             ok = edit_entry(
                 entry.id,
@@ -427,16 +703,43 @@ def link_var_path(var: tk.StringVar) -> Path:
     return Path(var.get().strip())
 
 
-def _onedrive_root() -> str:
+def _get_bases() -> dict[str, str]:
     try:
-        from symlink_manager import get_onedrive
-        od = get_onedrive()
-        return od.replace("/", "\\") if od else ""
+        return get_machine_config() or {}
     except Exception:
-        return ""
+        return {}
 
 
-def _shorten(path: str, onedrive: str) -> str:
-    if onedrive and path.startswith(onedrive):
-        return "…" + path[len(onedrive):]
-    return path
+def _shorten(path: str, bases_or_od) -> str:
+    """Accept either a bases dict or a legacy onedrive string.
+    Returns {base_key}\\relative or full path if no match."""
+    if isinstance(bases_or_od, str):
+        bases = {"onedrive": bases_or_od} if bases_or_od else {}
+    else:
+        bases = bases_or_od or {}
+    resolved = path
+    for key, val in bases.items():
+        resolved = resolved.replace("{" + key + "}", val)
+    resolved = resolved.replace("/", "\\")
+    best_key = None
+    best_len = 0
+    for key, val in bases.items():
+        b = val.replace("/", "\\").rstrip("\\")
+        if resolved.lower().startswith(b.lower()) and len(b) > best_len:
+            best_key = key
+            best_len = len(b)
+    if best_key:
+        return "{" + best_key + "}" + resolved[best_len:]
+    return resolved
+
+
+def _resolve_link(path_str: str, bases_or_od) -> str:
+    """Resolve template path for comparison (normalised to backslash)."""
+    if isinstance(bases_or_od, str):
+        bases = {"onedrive": bases_or_od} if bases_or_od else {}
+    else:
+        bases = bases_or_od or {}
+    s = path_str
+    for key, val in bases.items():
+        s = s.replace("{" + key + "}", val)
+    return s.replace("/", "\\")
