@@ -211,6 +211,11 @@ class SettingsWindow:
                         for raw in mc_data.get("scanned", []):
                             raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
                             raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
+                # Update ALL machines' entries so no machine is left with the old key name
+                for mc in cfg.get("machines", {}).values():
+                    for old_key, new_key in valid_renames:
+                        if old_key in mc:
+                            mc[new_key] = mc.pop(old_key)
                 mgr._save_raw(cfg)
 
         required = mgr.get_required_bases()

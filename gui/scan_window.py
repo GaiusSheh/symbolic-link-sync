@@ -261,8 +261,6 @@ class ScanWindow:
                     break
 
                 cur_depth = len(Path(dirpath).parts) - root_depth
-                if max_depth > 0 and cur_depth >= max_depth:
-                    dirnames[:] = []
 
                 # Progress: current path (truncated)
                 disp_path = _truncate_path(dirpath, disp_depth)
@@ -300,6 +298,10 @@ class ScanWindow:
                             "mtime_ts":   mtime,
                             "ignored":    False,
                         })
+
+                # Prune after junction check so junctions at max_depth are not missed
+                if max_depth > 0 and cur_depth >= max_depth:
+                    dirnames[:] = []
 
             results.sort(key=lambda e: e.get("mtime_ts", 0), reverse=True)
             self._sq.put(("done", results[:max_pairs], results))
@@ -424,7 +426,8 @@ class ScanWindow:
             link_disp   = _shorten_multi(e["link"], bases)
             target_disp = _shorten_multi(e["target"], bases)
             mtime_disp  = e.get("mtime", "")[:16].replace("T", " ")
-            tree.insert("", "end", iid=f'{e["link"]}||{e["target"]}',
+            esc = lambda s: s.replace("{", "__LB__").replace("}", "__RB__")
+            tree.insert("", "end", iid=esc(e["link"]) + "||" + esc(e["target"]),
                         values=(mtime_disp, link_disp, target_disp))
         self._import_frame.pack_forget()
 
@@ -447,22 +450,26 @@ class ScanWindow:
             self._import_frame.pack_forget()
             return
         iid = sel[0]
-        link_str, _, _ = iid.partition("||")
+        link_esc, _, _ = iid.partition("||")
+        link_str  = link_esc.replace("__LB__", "{").replace("__RB__", "}")
         suggested = Path(link_str).name
         self._id_var.set(suggested)
         self._desc_var.set("")
         self._import_frame.pack(fill="x", padx=8, pady=(0, 4))
 
     def _selected_keys(self):
+        """Returns (iid, link_str, target_str) with link/target unescaped from the iid."""
         sel = self._tree.selection()
         if not sel:
-            return None, None
+            return None, None, None
         iid = sel[0]
-        link_str, _, target_str = iid.partition("||")
-        return link_str, target_str
+        link_esc, _, target_esc = iid.partition("||")
+        link_str   = link_esc.replace("__LB__", "{").replace("__RB__", "}")
+        target_str = target_esc.replace("__LB__", "{").replace("__RB__", "}")
+        return iid, link_str, target_str
 
     def _do_import(self):
-        link_str, target_str = self._selected_keys()
+        iid, link_str, target_str = self._selected_keys()
         if not link_str:
             return
         entry_id = self._id_var.get().strip()
@@ -477,7 +484,7 @@ class ScanWindow:
         desc = self._desc_var.get().strip()
         ok, err = import_scanned_entry(link_str, target_str, entry_id, desc)
         if ok:
-            self._tree.delete(self._tree.selection()[0])
+            self._tree.delete(iid)
             self._import_frame.pack_forget()
             self._id_var.set("")
             self._desc_var.set("")
@@ -486,11 +493,11 @@ class ScanWindow:
             messagebox.showerror("导入失败", err, parent=self._win)
 
     def _do_ignore(self):
-        link_str, target_str = self._selected_keys()
+        iid, link_str, target_str = self._selected_keys()
         if not link_str:
             return
         ignore_scanned_entry(link_str, target_str)
-        self._tree.delete(self._tree.selection()[0])
+        self._tree.delete(iid)
         self._import_frame.pack_forget()
 
     # ── Helpers ───────────────────────────────────────────────────────────────

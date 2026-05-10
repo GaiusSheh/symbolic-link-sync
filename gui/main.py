@@ -331,7 +331,7 @@ class App:
         self._entries = mgr.check_all()
         _repaths_done: set[str] = set()   # avoid duplicate repath calls per ancestor
 
-        for entry in self._entries:
+        for entry in list(self._entries):   # snapshot: reassigning self._entries mid-loop is safe
             prev_entry = prev.get(entry.id)
 
             # ── Both link and target gone (OK → MISSING) — directory moved ───
@@ -620,11 +620,9 @@ class App:
             messagebox.showerror("重连失败", f"「{entry_id}」junction 重建失败，请检查路径。")
 
     def _on_entry_saved(self, entry_id: str):
-        """Called when user saves an entry via the edit dialog — counts as confirming empty target."""
+        """Called when user saves an entry via the edit dialog."""
         mgr.normalize_entries()
-        self._confirmed_empty.add(entry_id)
         self._repair_shown.discard(entry_id)
-        _save_confirmed_empty(self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._tray.update(self._entries, self._last_sync, self._next_check_time(),
                           confirmed_empty=self._confirmed_empty)

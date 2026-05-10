@@ -210,7 +210,11 @@ class StatusWindow:
                         values=("", "── 未管理的扫描结果 ──", "", "", ""),
                         tags=("separator",))
             for s in scanned:
-                iid = "scan::" + s["link"] + "||" + s["target"]
+                # Escape Tcl metacharacters { } which cause TclError in some tk versions
+                iid = ("scan::"
+                       + s["link"].replace("{", "__LB__").replace("}", "__RB__")
+                       + "||"
+                       + s["target"].replace("{", "__LB__").replace("}", "__RB__"))
                 tree.insert("", "end", iid=iid,
                             values=("🔍 未管理", s["link"].split("/")[-1],
                                     "",
@@ -299,7 +303,9 @@ class StatusWindow:
 
     def _scan_context_menu(self, event, iid):
         _, _, rest = iid.partition("::")
-        link_str, _, target_str = rest.partition("||")
+        link_esc, _, target_esc = rest.partition("||")
+        link_str   = link_esc.replace("__LB__", "{").replace("__RB__", "}")
+        target_str = target_esc.replace("__LB__", "{").replace("__RB__", "}")
         menu = tk.Menu(self._win, tearoff=0)
         menu.add_command(label="导入管理",
                          command=lambda: self._open_import_dialog(iid))
@@ -421,6 +427,8 @@ class StatusWindow:
         from symlink_manager import import_scanned_entry
         _, _, rest = iid.partition("::")
         link_str, _, target_str = rest.partition("||")
+        link_str   = link_str.replace("__LB__", "{").replace("__RB__", "}")
+        target_str = target_str.replace("__LB__", "{").replace("__RB__", "}")
 
         dlg = tk.Toplevel(self._win)
         dlg.title("导入为管理条目")

@@ -605,7 +605,13 @@ def _remove_link(link: Path) -> tuple[bool, str]:
             link.rmdir()   # only succeeds if empty
             return True, ""
         except OSError:
-            # Fallback: CMD rmdir handles permission issues and OneDrive placeholders
+            # Only use /s /q for truly empty dirs with permission issues (e.g. OneDrive placeholders).
+            # Never silently destroy a non-empty directory.
+            try:
+                if any(link.iterdir()):
+                    return False, "目录非空，已中止删除"
+            except OSError:
+                pass
             r = subprocess.run(f'rmdir /s /q "{link}"', shell=True,
                                capture_output=True,
                                creationflags=subprocess.CREATE_NO_WINDOW)
@@ -839,6 +845,13 @@ def edit_entry(entry_id: str,
                 raw["link"] = s
                 link_changed = True
         if new_id is not None and new_id != entry_id:
+            all_ids = (
+                {r["id"] for r in cfg.get("symlinks", [])}
+                | {r["id"] for r in cfg.get("local_data", {}).get(machine, {}).get("symlinks", [])}
+            )
+            all_ids.discard(entry_id)
+            if new_id in all_ids:
+                return False   # duplicate ID — reject rename
             raw["id"] = new_id
         break
 

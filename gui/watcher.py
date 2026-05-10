@@ -195,9 +195,12 @@ class BackgroundWatcher:
         self._running = False
         if self._timer:
             self._timer.cancel()
-        for t in self._drive_threads.values():
-            t.stop()
+        drive_threads = list(self._drive_threads.values())
         self._drive_threads.clear()
+        for t in drive_threads:
+            t.stop()
+        for t in drive_threads:
+            t.join(timeout=2)
         if self._observer:
             self._observer.stop()
             self._observer.join(timeout=3)
