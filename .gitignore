@@ -12,3 +12,6 @@ gui/*.spec
 gui/symlink-gui.log
 gui/symlink-gui.log.*
 gui/state.json
+
+# User data (changes with use, not part of source)
+symlinks.json
