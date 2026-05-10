@@ -755,22 +755,13 @@ def _get_bases() -> dict[str, str]:
         return {}
 
 
-def _shorten(path: str, bases_or_od) -> str:
-    """Thin wrapper around shorten_path that also accepts a legacy bare onedrive string."""
-    if isinstance(bases_or_od, str):
-        bases: dict[str, str] = {"onedrive": bases_or_od} if bases_or_od else {}
-    else:
-        bases = bases_or_od or {}
-    return shorten_path(path, bases)
+def _shorten(path: str, bases: dict[str, str]) -> str:
+    return shorten_path(path, bases or {})
 
 
-def _resolve_link(path_str: str, bases_or_od) -> str:
+def _resolve_link(path_str: str, bases: dict[str, str]) -> str:
     """Resolve template path for comparison (normalised to backslash)."""
-    if isinstance(bases_or_od, str):
-        bases = {"onedrive": bases_or_od} if bases_or_od else {}
-    else:
-        bases = bases_or_od or {}
     s = path_str
-    for key, val in bases.items():
+    for key, val in (bases or {}).items():
         s = s.replace("{" + key + "}", val)
     return s.replace("/", "\\")

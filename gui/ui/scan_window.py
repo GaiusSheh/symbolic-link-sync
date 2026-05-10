@@ -463,7 +463,7 @@ class ScanWindow:
             return None, None, None
         iid = sel[0]
         link_esc, _, target_esc = iid.partition("||")
-        link_str   = link_esc.replace("__LB__", "{").replace("__RB__", "}")
+        link_str   = iid_unescape(link_esc)
         target_str = iid_unescape(target_esc)
         return iid, link_str, target_str
 

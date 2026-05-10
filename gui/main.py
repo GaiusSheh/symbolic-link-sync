@@ -217,6 +217,17 @@ class App:
             seconds=self._settings.check_interval_minutes * 60
         )
 
+    def _prune_confirmed_empty(self) -> None:
+        """Remove stale IDs from confirmed_empty: deleted entries or non-empty targets."""
+        current_ids = {e.id for e in self._entries}
+        stale = (self._confirmed_empty - current_ids) | {
+            e.id for e in self._entries if e.id in self._confirmed_empty and not e.target_empty
+        }
+        if stale:
+            self._confirmed_empty -= stale
+            _save_confirmed_empty(self._confirmed_empty)
+            self._window.set_confirmed_empty(self._confirmed_empty)
+
     def _refresh_ui(self):
         """Update tray, window, and watcher dirs from current self._entries."""
         self._tray.update(self._entries, self._last_sync, self._next_check_time(),
@@ -250,13 +261,7 @@ class App:
         result = mgr.sync_all()
         self._last_sync = datetime.now()
         self._entries = mgr.check_all()
-        current_ids = {e.id for e in self._entries}
-        stale = (self._confirmed_empty - current_ids) | {
-            e.id for e in self._entries if e.id in self._confirmed_empty and not e.target_empty
-        }
-        if stale:
-            self._confirmed_empty -= stale
-            _save_confirmed_empty(self._confirmed_empty)
+        self._prune_confirmed_empty()
         self._refresh_ui()
         mgr.refresh_machine_drives()
         self._watcher.update_drive_roots(mgr.get_machine_drives())
@@ -334,15 +339,7 @@ class App:
         self._entries = mgr.check_all()
         _repaths_done: set[str] = set()   # avoid duplicate repath calls per ancestor
 
-        # Prune confirmed_empty: remove deleted entries and entries whose target is now non-empty
-        current_ids = {e.id for e in self._entries}
-        stale = (self._confirmed_empty - current_ids) | {
-            e.id for e in self._entries if e.id in self._confirmed_empty and not e.target_empty
-        }
-        if stale:
-            self._confirmed_empty -= stale
-            _save_confirmed_empty(self._confirmed_empty)
-            self._window.set_confirmed_empty(self._confirmed_empty)
+        self._prune_confirmed_empty()
 
         for entry in list(self._entries):   # snapshot: reassigning self._entries mid-loop is safe
             prev_entry = prev.get(entry.id)

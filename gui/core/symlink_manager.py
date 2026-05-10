@@ -172,10 +172,10 @@ def normalize_entries() -> tuple[int, int]:
         existing_ids.add(entry_id)
         n_scanned_promoted += 1
 
-    if n_scanned_promoted:
-        local["scanned"] = kept_scanned
-
-    changed = bool(to_demote or promoted or n_scanned_promoted)
+    # Always write back the filtered list (e.g. ignored entries may have changed)
+    local["scanned"] = kept_scanned
+    changed = bool(to_demote or promoted or n_scanned_promoted
+                   or kept_scanned != scanned_list)
     if changed:
         _save_raw(cfg)
     return len(to_demote), len(promoted) + n_scanned_promoted
@@ -449,6 +449,23 @@ def rebase(old_key: str, new_key: str, new_path: str) -> None:
     _save_raw(cfg)
 
 
+def _copy_entries_to_local(entries: list[dict], local: dict,
+                           existing: set[str], mc_bases: dict) -> None:
+    """Resolve template paths and append entries into local["symlinks"] (skips duplicates)."""
+    for raw in entries:
+        if raw["id"] in existing:
+            continue
+        raw_copy = dict(raw)
+        raw_copy["link"]   = str(_resolve(raw["link"],   mc_bases)).replace("\\", "/")
+        raw_copy["target"] = str(_resolve(raw["target"], mc_bases)).replace("\\", "/")
+        if "target_override" in raw:
+            raw_copy["target_override"] = {
+                k: str(_resolve(v, mc_bases)).replace("\\", "/")
+                for k, v in raw["target_override"].items()
+            }
+        local.setdefault("symlinks", []).append(raw_copy)
+
+
 def demote_base_entries(keys: set[str]) -> int:
     """Globally demote entries referencing keys from global symlinks into each machine's local_data.
 
@@ -477,18 +494,7 @@ def demote_base_entries(keys: set[str]) -> int:
                 continue
             local    = _local_data(cfg, mc_name)
             existing = {r["id"] for r in local.get("symlinks", [])}
-            for raw in to_demote:
-                if raw["id"] in existing:
-                    continue
-                raw_copy = dict(raw)
-                raw_copy["link"]   = str(_resolve(raw["link"],   mc_bases)).replace("\\", "/")
-                raw_copy["target"] = str(_resolve(raw["target"], mc_bases)).replace("\\", "/")
-                if "target_override" in raw:
-                    raw_copy["target_override"] = {
-                        k: str(_resolve(v, mc_bases)).replace("\\", "/")
-                        for k, v in raw["target_override"].items()
-                    }
-                local.setdefault("symlinks", []).append(raw_copy)
+            _copy_entries_to_local(to_demote, local, existing, mc_bases)
         _save_raw(cfg)
     return len(to_demote)
 
@@ -521,18 +527,7 @@ def demote_base_entries_local(keys: set[str]) -> int:
     if to_copy:
         local    = _local_data(cfg, machine)
         existing = {r["id"] for r in local.get("symlinks", [])}
-        for raw in to_copy:
-            if raw["id"] in existing:
-                continue
-            raw_copy = dict(raw)
-            raw_copy["link"]   = str(_resolve(raw["link"],   mc_bases)).replace("\\", "/")
-            raw_copy["target"] = str(_resolve(raw["target"], mc_bases)).replace("\\", "/")
-            if "target_override" in raw:
-                raw_copy["target_override"] = {
-                    k: str(_resolve(v, mc_bases)).replace("\\", "/")
-                    for k, v in raw["target_override"].items()
-                }
-            local.setdefault("symlinks", []).append(raw_copy)
+        _copy_entries_to_local(to_copy, local, existing, mc_bases)
         _save_raw(cfg)
     return len(to_copy)
 
@@ -555,11 +550,6 @@ def get_pending_bases() -> set[str]:
     full     = get_machine_config_full() or {}
     return required - set(full.keys())
 
-
-def get_onedrive() -> Optional[str]:
-    """Backward-compat: return the 'onedrive' base path, or None."""
-    cfg = get_machine_config()
-    return cfg.get("onedrive") if cfg else None
 
 
 def _resolve(template: str, bases: dict[str, str]) -> Path:
