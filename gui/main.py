@@ -249,6 +249,13 @@ class App:
         )
 
         self._entries = mgr.check_all()
+        current_ids = {e.id for e in self._entries}
+        stale = (self._confirmed_empty - current_ids) | {
+            e.id for e in self._entries if e.id in self._confirmed_empty and not e.target_empty
+        }
+        if stale:
+            self._confirmed_empty -= stale
+            _save_confirmed_empty(self._confirmed_empty)
         self._tray.update(self._entries, self._last_sync, next_check, confirmed_empty=self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
@@ -330,6 +337,16 @@ class App:
         prev = {e.id: e for e in self._entries}
         self._entries = mgr.check_all()
         _repaths_done: set[str] = set()   # avoid duplicate repath calls per ancestor
+
+        # Prune confirmed_empty: remove deleted entries and entries whose target is now non-empty
+        current_ids = {e.id for e in self._entries}
+        stale = (self._confirmed_empty - current_ids) | {
+            e.id for e in self._entries if e.id in self._confirmed_empty and not e.target_empty
+        }
+        if stale:
+            self._confirmed_empty -= stale
+            _save_confirmed_empty(self._confirmed_empty)
+            self._window.set_confirmed_empty(self._confirmed_empty)
 
         for entry in list(self._entries):   # snapshot: reassigning self._entries mid-loop is safe
             prev_entry = prev.get(entry.id)

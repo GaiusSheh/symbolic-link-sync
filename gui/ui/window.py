@@ -116,14 +116,15 @@ class StatusWindow:
         style.configure("Treeview.Heading", padding=(4, 6))
 
         cols = ("状态", "名称", "描述", "链接路径", "目标路径")
-        tree = ttk.Treeview(win, columns=cols, show="headings", height=16)
+        tree = ttk.Treeview(win, columns=cols, show="headings", height=16,
+                            selectmode="extended")
         self._tree = tree
 
         for col in cols:
             anchor = "center" if col == "状态" else "w"
             tree.heading(col, text=col, anchor=anchor)
 
-        tree.column("状态",   width=100, anchor="center", stretch=False)
+        tree.column("状态",   width=160, anchor="center", stretch=True)
         tree.column("名称",   width=170, anchor="w",      stretch=False)
         tree.column("描述",   width=200, anchor="w")
         tree.column("链接路径", width=320, anchor="w")
@@ -160,8 +161,9 @@ class StatusWindow:
         win.columnconfigure(0, weight=1)
         win.rowconfigure(0, weight=1)
 
-        tree.bind("<Double-1>", self._on_double_click)
-        tree.bind("<Button-3>", self._on_right_click)
+        tree.bind("<Double-1>",  self._on_double_click)
+        tree.bind("<Button-3>",  self._on_right_click)
+        tree.bind("<Delete>",    self._on_delete_key)
 
         self._populate(entries)
         _center(win)
@@ -194,7 +196,7 @@ class StatusWindow:
 
         if local_entries:
             tree.insert("", "end", iid="__local_sep__",
-                        values=("", "── 本机管理 ──", "", "", ""),
+                        values=("── 本机管理 ──", "", "", "", ""),
                         tags=("separator",))
             for e in local_entries:
                 _insert_entry(e)
@@ -207,7 +209,7 @@ class StatusWindow:
 
         if scanned:
             tree.insert("", "end", iid="__scan_sep__",
-                        values=("", "── 未管理的扫描结果 ──", "", "", ""),
+                        values=("── 未管理的扫描结果 ──", "", "", "", ""),
                         tags=("separator",))
             for s in scanned:
                 # Escape Tcl metacharacters { } which cause TclError in some tk versions
@@ -228,7 +230,7 @@ class StatusWindow:
         pending = {eid: ml for eid, ml in other.items() if eid not in my_ids}
         if pending:
             tree.insert("", "end", iid="__offline_sep__",
-                        values=("", "── 离线配置 ──", "", "", ""),
+                        values=("── 离线配置 ──", "", "", "", ""),
                         tags=("separator",))
             for eid, machine_entries in sorted(pending.items()):
                 machines_str = "、".join(e["_machine"] for e in machine_entries)
@@ -267,7 +269,33 @@ class StatusWindow:
         item = self._tree.identify_row(event.y)
         if not item or item in ("__scan_sep__", "__offline_sep__", "__local_sep__"):
             return
-        self._tree.selection_set(item)
+
+        # If right-clicked outside current selection, move selection to this item
+        if item not in self._tree.selection():
+            self._tree.selection_set(item)
+
+        # Collect all selected managed entries (skip separators, scan::, offline::)
+        _sep = {"__scan_sep__", "__offline_sep__", "__local_sep__"}
+        selected_ids = [
+            iid for iid in self._tree.selection()
+            if iid not in _sep and not iid.startswith("scan::") and not iid.startswith("offline::")
+        ]
+        selected_entries = [e for e in self._entries if e.id in set(selected_ids)]
+
+        # Multi-select: show bulk-delete menu (only when ≥2 managed entries selected)
+        if len(selected_entries) >= 2:
+            menu = tk.Menu(self._win, tearoff=0)
+            n = len(selected_entries)
+            menu.add_command(
+                label=f"删除 {n} 项的管理记录",
+                command=lambda: self._delete_entries(selected_entries, remove_junction=False))
+            menu.add_command(
+                label=f"删除 {n} 项的管理记录和目录",
+                command=lambda: self._delete_entries(selected_entries, remove_junction=True))
+            menu.tk_popup(event.x_root, event.y_root)
+            return
+
+        # Single-item menus
         if item.startswith("scan::"):
             self._scan_context_menu(event, item)
             return
@@ -499,6 +527,36 @@ class StatusWindow:
             self._on_refresh_needed()
         else:
             messagebox.showerror("删除失败", err, parent=self._win)
+
+    def _delete_entries(self, entries: list, remove_junction: bool = True):
+        names = "\n".join(f"  • {e.id}" for e in entries)
+        if remove_junction:
+            msg = f"确认删除以下 {len(entries)} 项的管理记录，并同时删除对应的 Junction 目录？\n\n{names}"
+        else:
+            msg = f"确认删除以下 {len(entries)} 项的管理记录？（Junction 目录不会被删除）\n\n{names}"
+        if not messagebox.askyesno("确认批量删除", msg, icon="warning", parent=self._win):
+            return
+        errors = []
+        for e in entries:
+            ok, err = delete_entry(e.id, remove_junction=remove_junction)
+            if not ok:
+                errors.append(f"{e.id}: {err}")
+        if errors:
+            messagebox.showerror("部分删除失败", "\n".join(errors), parent=self._win)
+        self._on_refresh_needed()
+
+    def _on_delete_key(self, _event):
+        _sep = {"__scan_sep__", "__offline_sep__", "__local_sep__"}
+        selected_entries = [
+            e for e in self._entries
+            if e.id in self._tree.selection() and e.id not in _sep
+        ]
+        if not selected_entries:
+            return
+        if len(selected_entries) == 1:
+            self._delete_entry(selected_entries[0], remove_junction=False)
+        else:
+            self._delete_entries(selected_entries, remove_junction=False)
 
     # ── Shared dialog builder ─────────────────────────────────────────────────
 
