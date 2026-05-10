@@ -6,6 +6,8 @@ scan_result.txt
 gui/dist/
 gui/build/
 gui/__pycache__/
+gui/core/__pycache__/
+gui/ui/__pycache__/
 gui/*.spec
 
 # Runtime state / logs
