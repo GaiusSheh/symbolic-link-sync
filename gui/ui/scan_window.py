@@ -9,8 +9,8 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 import tkinter as tk
 
-import symlink_manager as mgr
-from symlink_manager import (
+from core import symlink_manager as mgr
+from core.symlink_manager import (
     _to_json_path, get_scanned,
     ignore_scanned_entry, import_scanned_entry, merge_scanned,
     get_machine_config, get_machine_config_full, register_machine, rebase,

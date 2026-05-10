@@ -19,7 +19,7 @@ _FILE_ACTION_RENAMED_NEW_NAME = 5
 
 logger = logging.getLogger(__name__)
 
-_JSON_PATH = Path(__file__).parent.parent / "symlinks.json"
+_JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
 
 
 class _JsonHandler(FileSystemEventHandler):
@@ -99,10 +99,11 @@ class _DriveRootThread(threading.Thread):
     Records qualifying events into the shared recent_creates deque.
     """
 
-    def __init__(self, drive: Path, recent_creates: deque):
+    def __init__(self, drive: Path, recent_creates: deque, event_queue: queue.Queue):
         super().__init__(daemon=True, name=f"DriveRoot-{drive.drive}")
         self._drive          = drive
         self._recent_creates = recent_creates
+        self._q              = event_queue
         self._stop           = threading.Event()
         self._fhandle        = None          # Win32 HANDLE (not threading.Thread._handle)
         self._fhandle_lock   = threading.Lock()
@@ -149,6 +150,7 @@ class _DriveRootThread(threading.Thread):
                             full = self._drive / rel_path
                             self._recent_creates.append((time.time(), full))
                             logger.debug("DriveRootThread create: %s", full)
+                            self._q.put(("refresh",))
                 except Exception as exc:
                     if not self._stop.is_set():
                         logger.warning("DriveRootThread %s: read error: %s",
@@ -212,7 +214,7 @@ class BackgroundWatcher:
         for d in current - new:
             self._drive_threads.pop(d).stop()
         for d in new - current:
-            t = _DriveRootThread(d, self._recent_creates)
+            t = _DriveRootThread(d, self._recent_creates, self._q)
             t.start()
             self._drive_threads[d] = t
             logger.info("DriveRootThread started: %s", d)
@@ -256,11 +258,17 @@ class BackgroundWatcher:
         """Return the most recent directory created with the given name within max_age_s seconds."""
         now        = time.time()
         name_lower = name.lower()
-        for ts, path in reversed(list(self._recent_creates)):
-            if now - ts > max_age_s:
+        snapshot = list(self._recent_creates)
+        logger.debug("find_recent_create(%r, %.1fs): deque has %d entries", name, max_age_s, len(snapshot))
+        for ts, path in reversed(snapshot):
+            age = now - ts
+            if age > max_age_s:
                 continue
+            logger.debug("  candidate age=%.2fs path=%s", age, path)
             if path.name.lower() == name_lower and path.is_dir():
+                logger.debug("  → match: %s", path)
                 return path
+        logger.debug("  → no match found")
         return None
 
     def _schedule_check(self):

@@ -22,9 +22,9 @@ from pathlib import Path
 
 import json
 from typing import Optional
-import settings_manager as sm
-import symlink_manager as mgr
-from icons import app_icon
+from core import settings_manager as sm
+from core import symlink_manager as mgr
+from ui.icons import app_icon
 
 _STATE_PATH = Path(__file__).parent / "state.json"
 
@@ -45,14 +45,14 @@ def _save_confirmed_empty(ids: set[str]) -> None:
         )
     except Exception:
         pass
-from notifier import send_toast, show_banner
-from registration_window import RegistrationWindow
-from symlink_manager import LinkEntry, Status
-from scan_window import ScanWindow
-from settings_window import SettingsWindow
-from tray import TrayIcon
-from watcher import BackgroundWatcher
-from window import StatusWindow
+from ui.notifier import send_toast, show_banner
+from ui.registration_window import RegistrationWindow
+from core.symlink_manager import LinkEntry, Status
+from ui.scan_window import ScanWindow
+from ui.settings_window import SettingsWindow
+from ui.tray import TrayIcon
+from core.watcher import BackgroundWatcher
+from ui.window import StatusWindow
 
 _LOG_PATH = Path(__file__).parent / "symlink-gui.log"
 _POLL_MS  = 100
@@ -63,7 +63,7 @@ def _setup_logging():
     Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
     handler = logging.FileHandler(_LOG_PATH, encoding="utf-8")
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
         handlers=[handler, logging.StreamHandler(sys.stdout)],
     )

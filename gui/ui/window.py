@@ -9,10 +9,10 @@ from typing import Callable
 
 logger = logging.getLogger(__name__)
 
-from symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa: F401
-                              create_entry, delete_entry, edit_entry,
-                              get_scanned, get_machine_config,
-                              get_other_machines_local_entries)
+from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa: F401
+                                   create_entry, delete_entry, edit_entry,
+                                   get_scanned, get_machine_config,
+                                   get_other_machines_local_entries)
 
 _STATUS_LABEL = {
     Status.OK:      "✅ 正常",
@@ -21,7 +21,7 @@ _STATUS_LABEL = {
     Status.MISSING: "⚠️ 缺失",
 }
 
-_JSON_PATH = Path(__file__).parent.parent / "symlinks.json"
+_JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
 
 
 def _center(win: tk.Toplevel | tk.Tk):
@@ -100,7 +100,7 @@ class StatusWindow:
         win.title("Sym-Link 状态")
         win.resizable(True, True)
         try:
-            from icons import app_icon
+            from ui.icons import app_icon
             from PIL import ImageTk
             _ico = ImageTk.PhotoImage(app_icon(256), master=win)
             win.iconphoto(False, _ico)
@@ -315,7 +315,7 @@ class StatusWindow:
 
     def _open_offline_entry_dialog(self, entry_id: str):
         """Show per-machine configs for an offline entry and allow configuring locally."""
-        from symlink_manager import _resolve, get_other_machines_local_entries
+        from core.symlink_manager import _resolve, get_other_machines_local_entries
         import tkinter.ttk as _ttk
 
         other = get_other_machines_local_entries()
@@ -403,7 +403,7 @@ class StatusWindow:
                         return
                     confirm(force=True); return
 
-            from symlink_manager import create_entry, ERR_LINK_NONEMPTY
+            from core.symlink_manager import create_entry, ERR_LINK_NONEMPTY
             ok, err = create_entry(eid, desc, link_path, target_path, force_overwrite=force)
             if ok:
                 dlg.destroy()
@@ -424,7 +424,7 @@ class StatusWindow:
         dlg.geometry(f"+{(sw-w)//2}+{(sh-h)//2}")
 
     def _open_import_dialog(self, iid):
-        from symlink_manager import import_scanned_entry
+        from core.symlink_manager import import_scanned_entry
         _, _, rest = iid.partition("::")
         link_str, _, target_str = rest.partition("||")
         link_str   = link_str.replace("__LB__", "{").replace("__RB__", "}")
@@ -474,7 +474,7 @@ class StatusWindow:
         ttk_dlg.Button(btn_row, text="导入", command=confirm, width=8).pack(side="right")
 
     def _do_ignore_scan(self, link_str, target_str, iid):
-        from symlink_manager import ignore_scanned_entry
+        from core.symlink_manager import ignore_scanned_entry
         ignore_scanned_entry(link_str, target_str)
         self._on_refresh_needed()
 
@@ -616,7 +616,7 @@ class StatusWindow:
                     force = True
 
             # Warn if entry would move from global to machine-specific
-            from symlink_manager import _to_json_path, _is_global
+            from core.symlink_manager import _to_json_path, _is_global
             bases = _get_bases()
             new_link_json   = _to_json_path(new_link,   bases) if bases else str(new_link)
             new_target_json = _to_json_path(new_target, bases) if bases else str(new_target)

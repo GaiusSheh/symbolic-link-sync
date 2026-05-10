@@ -8,8 +8,8 @@ from typing import Callable
 import pystray
 from PIL import Image
 
-from icons import tray_icon
-from symlink_manager import Status, get_scanned, get_other_machines_local_entries
+from ui.icons import tray_icon
+from core.symlink_manager import Status, get_scanned, get_other_machines_local_entries
 
 
 def _status_color(entries, confirmed_empty: set[str]) -> str:

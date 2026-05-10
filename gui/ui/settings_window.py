@@ -5,8 +5,8 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 
-import settings_manager as sm
-import symlink_manager as mgr
+from core import settings_manager as sm
+from core import symlink_manager as mgr
 
 
 def _center(win: tk.Toplevel):
@@ -221,7 +221,7 @@ class SettingsWindow:
         required = mgr.get_required_bases()
         missing  = required - set(bases.keys())
         if missing:
-            from dialogs import ask_missing_bases
+            from ui.dialogs import ask_missing_bases
             choice = ask_missing_bases(self._win, missing)
             if choice == "cancel":
                 return

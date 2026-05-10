@@ -4,7 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-import symlink_manager as mgr
+from core import symlink_manager as mgr
 
 
 class RegistrationWindow:
@@ -163,7 +163,7 @@ class RegistrationWindow:
         required = mgr.get_required_bases()
         missing  = required - set(bases.keys())
         if missing:
-            from dialogs import ask_missing_bases
+            from ui.dialogs import ask_missing_bases
             choice = ask_missing_bases(self._win, missing)
             if choice == "cancel":
                 return
