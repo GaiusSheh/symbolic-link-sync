@@ -1108,7 +1108,11 @@ def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], lis
         if "link" in ch:
             raw["link"] = _to_json_path(ch["link"], bases)
         if "target" in ch:
-            raw["target"] = _to_json_path(ch["target"], bases)
+            s = _to_json_path(ch["target"], bases)
+            raw["target"] = s
+            for k in raw.get("target_override", {}):
+                if k.upper() == machine:
+                    raw["target_override"][k] = s
 
     _save_raw(cfg)
 

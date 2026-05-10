@@ -143,15 +143,15 @@ class RegistrationWindow:
                 messagebox.showwarning("名称不能为空", "每条同步目录必须填写名称。",
                                        parent=self._win)
                 return
+            if name in bases:
+                messagebox.showwarning("名称重复", f"名称「{name}」重复，请修改。",
+                                       parent=self._win)
+                return
             if ignored:
                 bases[name] = None
                 continue
             if not path or not Path(path).is_dir():
                 messagebox.showwarning("路径无效", f"「{name}」的路径不存在或不是目录。",
-                                       parent=self._win)
-                return
-            if name in bases:
-                messagebox.showwarning("名称重复", f"名称「{name}」重复，请修改。",
                                        parent=self._win)
                 return
             bases[name] = path.replace("\\", "/")

@@ -477,7 +477,7 @@ class StatusWindow:
     def _open_in_explorer(self, path):
         import subprocess
         target = path if path.exists() else path.parent
-        subprocess.run(f'explorer /select,"{path}"', shell=True)
+        subprocess.run(f'explorer /select,"{target}"', shell=True)
 
     def _delete_entry(self, entry, remove_junction: bool = True):
         if remove_junction:

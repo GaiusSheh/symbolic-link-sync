@@ -208,6 +208,13 @@ class App:
 
     # ── Actions (main thread) ─────────────────────────────────────────────────
 
+    def _next_check_time(self):
+        if self._last_sync is None:
+            return None
+        return self._last_sync + timedelta(
+            seconds=self._settings.check_interval_minutes * 60
+        )
+
     def _do_smart_sync(self):
         known_ids = {e.id for e in self._entries}
         result = mgr.smart_sync(known_ids)
@@ -264,7 +271,7 @@ class App:
             return  # unrelated directory move, ignore
         mgr.normalize_entries()
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
         old_name = Path(old_path).name
@@ -338,7 +345,7 @@ class App:
                         logging.info("Dir move detected: %s → %s", old_base, new_base)
                         updated, failed = mgr.repath_entries(str(old_base), str(new_base))
                         self._entries = mgr.check_all()
-                        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+                        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
                         self._window.refresh(self._entries)
                         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
                         msg = f"已更新 {len(updated)} 项路径：{old_base.name} → {new_base.name}"
@@ -435,7 +442,7 @@ class App:
             elif entry.status == Status.BROKEN and (not prev_entry or prev_entry.status != Status.BROKEN):
                 send_toast("Sym-Link: 断链", f"{entry.id}: target 不可达")
 
-        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
@@ -480,7 +487,7 @@ class App:
             logging.error("Explorer link recovery failed for %s: %s", entry.id, exc)
 
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -535,7 +542,7 @@ class App:
             self._repair_shown.discard(entry.id)
             _save_confirmed_empty(self._confirmed_empty)
             self._window.set_confirmed_empty(self._confirmed_empty)
-            self._tray.update(self._entries, self._last_sync,
+            self._tray.update(self._entries, self._last_sync, self._next_check_time(),
                               confirmed_empty=self._confirmed_empty)
             dlg.destroy()
 
@@ -564,7 +571,7 @@ class App:
             msg = f"{entry.id} target 路径更新失败，请手动重建"
             show_banner(self._root, "Sym-Link: 更新失败", msg)
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
 
@@ -605,7 +612,7 @@ class App:
         self._repair_shown.discard(entry_id)
         _save_confirmed_empty(self._confirmed_empty)
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, confirmed_empty=self._confirmed_empty)
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         if not ok:
@@ -619,7 +626,7 @@ class App:
         self._repair_shown.discard(entry_id)
         _save_confirmed_empty(self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
-        self._tray.update(self._entries, self._last_sync,
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(),
                           confirmed_empty=self._confirmed_empty)
 
     def _on_settings_applied(self, new_settings: sm.Settings):

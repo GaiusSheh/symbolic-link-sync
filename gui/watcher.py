@@ -149,8 +149,10 @@ class _DriveRootThread(threading.Thread):
                             full = self._drive / rel_path
                             self._recent_creates.append((time.time(), full))
                             logger.debug("DriveRootThread create: %s", full)
-                except Exception:
+                except Exception as exc:
                     if not self._stop.is_set():
+                        logger.warning("DriveRootThread %s: read error: %s",
+                                       self._drive, exc)
                         time.sleep(1)
         finally:
             with self._fhandle_lock:
