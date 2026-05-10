@@ -5,6 +5,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from core import symlink_manager as mgr
+from ui.utils import build_base_row
 
 
 class RegistrationWindow:
@@ -84,50 +85,11 @@ class RegistrationWindow:
         win.geometry(f"+{(sw-w)//2}+{(sh-h)//2}")
 
     def _add_row(self, name: str, path: str, ignored: bool = False):
-        row_frame = ttk.Frame(self._rows_frame)
-        row_frame.pack(fill="x", pady=2)
-
-        name_var    = tk.StringVar(value=name)
-        path_var    = tk.StringVar(value=path)
-        ignored_var = tk.BooleanVar(value=ignored)
-
-        ttk.Label(row_frame, text="名称：", width=6, anchor="e").pack(side="left")
-        ttk.Entry(row_frame, textvariable=name_var, width=14).pack(side="left", padx=(0, 6))
-        ttk.Label(row_frame, text="路径：", width=5, anchor="e").pack(side="left")
-        path_entry = ttk.Entry(row_frame, textvariable=path_var, width=36)
-        path_entry.pack(side="left", padx=(0, 4))
-
-        def browse(pv=path_var):
-            cur  = pv.get()
-            init = cur if cur and Path(cur).is_dir() else str(Path.home())
-            p = filedialog.askdirectory(parent=self._win, title="选择同步目录根路径",
-                                        initialdir=init)
-            if p:
-                pv.set(p)
-
-        browse_btn = ttk.Button(row_frame, text="浏览…", command=browse, width=6)
-        browse_btn.pack(side="left", padx=(0, 4))
-
-        def _toggle_ignored(*_):
-            state = "disabled" if ignored_var.get() else "normal"
-            path_entry.config(state=state)
-            browse_btn.config(state=state)
-
-        ignored_var.trace_add("write", _toggle_ignored)
-        _toggle_ignored()
-
-        ttk.Checkbutton(row_frame, text="此机器不使用",
-                        variable=ignored_var).pack(side="left", padx=(0, 4))
-
-        row = {"name_var": name_var, "path_var": path_var,
-               "ignored_var": ignored_var, "frame": row_frame}
-        self._rows.append(row)
-
-        def remove(r=row):
-            r["frame"].destroy()
-            self._rows.remove(r)
-
-        ttk.Button(row_frame, text="✕", command=remove, width=3).pack(side="left")
+        build_base_row(
+            self._win, self._rows, self._rows_frame,
+            name=name, path=path, ignored=ignored,
+            ignored_label="此机器不使用", name_width=14, path_width=36, browse_text="浏览…",
+        )
 
     # ── Actions ───────────────────────────────────────────────────────────────
 

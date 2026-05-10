@@ -688,9 +688,9 @@ def sync_all() -> SyncResult:
     for entry in check_all():
         if entry.status == Status.OK:
             result.skipped.append(entry.id)
-        elif entry.status in (Status.BROKEN, Status.MISSING):
-            if entry.status == Status.BROKEN:
-                result.broken.append(entry.id)
+        elif entry.status == Status.BROKEN:
+            result.broken.append(entry.id)
+        elif entry.status == Status.MISSING:
             result.skipped.append(entry.id)
         elif entry.status == Status.PENDING:
             ok, _ = _create_junction(entry.link, entry.target)

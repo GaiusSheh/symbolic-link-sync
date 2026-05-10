@@ -13,6 +13,7 @@ from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa:
                                    create_entry, delete_entry, edit_entry,
                                    get_scanned, get_machine_config,
                                    get_other_machines_local_entries)
+from ui.utils import shorten_path
 
 _STATUS_LABEL = {
     Status.OK:      "✅ 正常",
@@ -363,8 +364,6 @@ class StatusWindow:
         ref = _ttk.LabelFrame(dlg, text="其他计算机配置", padding=8)
         ref.pack(fill="x", padx=12, pady=(12, 4))
 
-        for col, w in [("计算机", 120), ("链接路径", 280), ("目标路径", 280)]:
-            _ttk.Label(ref, text=col, font=("Segoe UI", 9, "bold"), width=w//8).pack(side="left", padx=4)
         ref_tree = _ttk.Treeview(ref, columns=("机器", "链接", "目标"),
                                   show="headings", height=len(machine_entries))
         ref_tree.heading("机器", text="计算机", anchor="w")
@@ -756,11 +755,8 @@ class StatusWindow:
             else:
                 messagebox.showerror("创建失败", err, parent=dlg)
 
-        def confirm():
-            do_create()
-
         ttk.Button(btn_row, text="取消", command=dlg.destroy, width=8).pack(side="right", padx=(6, 0))
-        ttk.Button(btn_row, text="创建", command=confirm,     width=8).pack(side="right")
+        ttk.Button(btn_row, text="创建", command=do_create,   width=8).pack(side="right")
         _center_on(dlg, self._win)
 
 
@@ -778,26 +774,12 @@ def _get_bases() -> dict[str, str]:
 
 
 def _shorten(path: str, bases_or_od) -> str:
-    """Accept either a bases dict or a legacy onedrive string.
-    Returns {base_key}\\relative or full path if no match."""
+    """Thin wrapper around shorten_path that also accepts a legacy bare onedrive string."""
     if isinstance(bases_or_od, str):
-        bases = {"onedrive": bases_or_od} if bases_or_od else {}
+        bases: dict[str, str] = {"onedrive": bases_or_od} if bases_or_od else {}
     else:
         bases = bases_or_od or {}
-    resolved = path
-    for key, val in bases.items():
-        resolved = resolved.replace("{" + key + "}", val)
-    resolved = resolved.replace("/", "\\")
-    best_key = None
-    best_len = 0
-    for key, val in bases.items():
-        b = val.replace("/", "\\").rstrip("\\")
-        if resolved.lower().startswith(b.lower()) and len(b) > best_len:
-            best_key = key
-            best_len = len(b)
-    if best_key:
-        return "{" + best_key + "}" + resolved[best_len:]
-    return resolved
+    return shorten_path(path, bases)
 
 
 def _resolve_link(path_str: str, bases_or_od) -> str:

@@ -101,15 +101,21 @@ class _DriveRootThread(threading.Thread):
 
     def __init__(self, drive: Path, recent_creates: deque, event_queue: queue.Queue):
         super().__init__(daemon=True, name=f"DriveRoot-{drive.drive}")
-        self._drive          = drive
-        self._recent_creates = recent_creates
-        self._q              = event_queue
-        self._stop           = threading.Event()
-        self._fhandle        = None          # Win32 HANDLE (not threading.Thread._handle)
-        self._fhandle_lock   = threading.Lock()
+        self._drive            = drive
+        self._recent_creates   = recent_creates
+        self._q                = event_queue
+        self._stop             = threading.Event()
+        self._fhandle          = None          # Win32 HANDLE (not threading.Thread._handle)
+        self._fhandle_lock     = threading.Lock()
+        self._refresh_debounce: threading.Timer | None = None
+        self._debounce_lock    = threading.Lock()
 
     def stop(self) -> None:
         self._stop.set()
+        with self._debounce_lock:
+            if self._refresh_debounce:
+                self._refresh_debounce.cancel()
+                self._refresh_debounce = None
         with self._fhandle_lock:
             h, self._fhandle = self._fhandle, None
         if h is not None:
@@ -117,6 +123,15 @@ class _DriveRootThread(threading.Thread):
                 win32file.CloseHandle(h)     # unblocks ReadDirectoryChangesW
             except Exception:
                 pass
+
+    def _debounce_refresh(self) -> None:
+        with self._debounce_lock:
+            if self._refresh_debounce:
+                self._refresh_debounce.cancel()
+            t = threading.Timer(1.0, lambda: self._q.put(("refresh",)))
+            t.daemon = True
+            t.start()
+            self._refresh_debounce = t
 
     def run(self) -> None:
         try:
@@ -150,7 +165,7 @@ class _DriveRootThread(threading.Thread):
                             full = self._drive / rel_path
                             self._recent_creates.append((time.time(), full))
                             logger.debug("DriveRootThread create: %s", full)
-                            self._q.put(("refresh",))
+                            self._debounce_refresh()
                 except Exception as exc:
                     if not self._stop.is_set():
                         logger.warning("DriveRootThread %s: read error: %s",

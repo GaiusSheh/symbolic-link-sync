@@ -216,17 +216,20 @@ class App:
             seconds=self._settings.check_interval_minutes * 60
         )
 
+    def _refresh_ui(self):
+        """Update tray, window, and watcher dirs from current self._entries."""
+        self._tray.update(self._entries, self._last_sync, self._next_check_time(),
+                          confirmed_empty=self._confirmed_empty)
+        self._window.set_confirmed_empty(self._confirmed_empty)
+        self._window.refresh(self._entries)
+        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+
     def _do_smart_sync(self):
         known_ids = {e.id for e in self._entries}
         result = mgr.smart_sync(known_ids)
         self._last_sync = datetime.now()
         self._entries = mgr.check_all()
-        next_check = self._last_sync + timedelta(
-            seconds=self._settings.check_interval_minutes * 60
-        )
-        self._tray.update(self._entries, self._last_sync, next_check, confirmed_empty=self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
         if result.created:
             send_toast("Sym-Link: 已创建链接", ", ".join(result.created))
         if result.failed:
@@ -245,10 +248,6 @@ class App:
             logging.info("normalize_entries: %d demoted, %d promoted", nd, np)
         result = mgr.sync_all()
         self._last_sync = datetime.now()
-        next_check = self._last_sync + timedelta(
-            seconds=self._settings.check_interval_minutes * 60
-        )
-
         self._entries = mgr.check_all()
         current_ids = {e.id for e in self._entries}
         stale = (self._confirmed_empty - current_ids) | {
@@ -257,10 +256,7 @@ class App:
         if stale:
             self._confirmed_empty -= stale
             _save_confirmed_empty(self._confirmed_empty)
-        self._tray.update(self._entries, self._last_sync, next_check, confirmed_empty=self._confirmed_empty)
-        self._window.set_confirmed_empty(self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
         mgr.refresh_machine_drives()
         self._watcher.update_drive_roots(mgr.get_machine_drives())
 
@@ -279,9 +275,7 @@ class App:
             return  # unrelated directory move, ignore
         mgr.normalize_entries()
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
         old_name = Path(old_path).name
         new_name = Path(new_path).name
         msg = f"已更新 {len(updated)} 项路径：{old_name} → {new_name}"
@@ -363,9 +357,7 @@ class App:
                         logging.info("Dir move detected: %s → %s", old_base, new_base)
                         updated, failed = mgr.repath_entries(str(old_base), str(new_base))
                         self._entries = mgr.check_all()
-                        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-                        self._window.refresh(self._entries)
-                        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+                        self._refresh_ui()
                         msg = f"已更新 {len(updated)} 项路径：{old_base.name} → {new_base.name}"
                         if failed:
                             msg += f"，{len(failed)} 项 junction 重建失败"
@@ -381,6 +373,7 @@ class App:
                         send_toast("Sym-Link: 已自动更新", msg)
                         show_banner(self._root, "Sym-Link: 已自动更新", msg)
                         self._entries = mgr.check_all()
+                        break  # prev dict is stale after mid-loop reassignment
                     else:
                         logging.warning("Dir move: no destination found for %s", entry.id)
                         self._show_repair_dialog(entry, "目录已移动，但无法找到新位置，请手动更新路径。")
@@ -462,10 +455,7 @@ class App:
                 send_toast("Sym-Link: 断链", f"{entry.id}: target 不可达")
 
         self._check_for_new_junctions()
-        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-        self._window.set_confirmed_empty(self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
 
     def _check_for_new_junctions(self):
         """Auto-register or prompt for unmanaged junctions recently created within a base dir."""
@@ -640,9 +630,7 @@ class App:
             logging.error("Explorer link recovery failed for %s: %s", entry.id, exc)
 
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
 
     def _show_repair_dialog(self, entry: LinkEntry, reason: str):
         """Modal dialog asking the user to repair a broken entry manually."""
@@ -724,9 +712,7 @@ class App:
             msg = f"{entry.id} target 路径更新失败，请手动重建"
             show_banner(self._root, "Sym-Link: 更新失败", msg)
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-        self._window.refresh(self._entries)
-        self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        self._refresh_ui()
 
     def _do_quit(self):
         self._quitting = True
@@ -761,13 +747,12 @@ class App:
         """Rebuild junction + confirm empty target for the given entry."""
         ok = mgr.edit_entry(entry_id)
         mgr.normalize_entries()
-        self._confirmed_empty.add(entry_id)
-        self._repair_shown.discard(entry_id)
-        _save_confirmed_empty(self._confirmed_empty)
+        if ok:
+            self._confirmed_empty.add(entry_id)
+            self._repair_shown.discard(entry_id)
+            _save_confirmed_empty(self._confirmed_empty)
         self._entries = mgr.check_all()
-        self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
-        self._window.set_confirmed_empty(self._confirmed_empty)
-        self._window.refresh(self._entries)
+        self._refresh_ui()
         if not ok:
             from tkinter import messagebox
             messagebox.showerror("重连失败", f"「{entry_id}」junction 重建失败，请检查路径。")

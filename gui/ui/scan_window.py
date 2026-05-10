@@ -15,6 +15,7 @@ from core.symlink_manager import (
     ignore_scanned_entry, import_scanned_entry, merge_scanned,
     get_machine_config, get_machine_config_full, register_machine, rebase,
 )
+from ui.utils import shorten_path
 
 
 def _truncate_path(path: str, display_depth: int) -> str:
@@ -572,15 +573,4 @@ def _resolve_with_bases(path_str: str, bases: dict[str, str]) -> str:
 
 
 def _shorten_multi(path_str: str, bases: dict[str, str]) -> str:
-    """Resolve and abbreviate using the longest matching base."""
-    resolved = _resolve_with_bases(path_str, bases)
-    best_key = None
-    best_len = 0
-    for key, base in bases.items():
-        b = base.replace("/", "\\").rstrip("\\")
-        if resolved.lower().startswith(b.lower()) and len(b) > best_len:
-            best_key = key
-            best_len = len(b)
-    if best_key:
-        return "{" + best_key + "}" + resolved[best_len:]
-    return resolved
+    return shorten_path(path_str, bases)
