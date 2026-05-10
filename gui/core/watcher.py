@@ -254,6 +254,11 @@ class BackgroundWatcher:
             except Exception as exc:
                 logger.warning("Cannot watch %s: %s", d, exc)
 
+    def get_recent_creates(self, max_age_s: float = 30.0) -> list[Path]:
+        """Return paths of all directories created within the last max_age_s seconds."""
+        now = time.time()
+        return [p for ts, p in self._recent_creates if now - ts <= max_age_s]
+
     def find_recent_create(self, name: str, max_age_s: float = 5.0) -> Optional[Path]:
         """Return the most recent directory created with the given name within max_age_s seconds."""
         now        = time.time()

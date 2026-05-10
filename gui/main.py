@@ -95,6 +95,7 @@ class App:
         self._repair_shown: set[str] = set()
         self._confirmed_empty: set[str] = _load_confirmed_empty()
         self._quitting = False
+        self._pending_new_junction_prompt: set[str] = set()  # lower-case normalised path strings
 
         self._tray = TrayIcon(
             event_queue=self._q,
@@ -406,7 +407,8 @@ class App:
                         self._root.after(3000, lambda e=entry, nd=new_dir: self._do_explorer_recovery_link(e, nd))
                         continue
                     elif (entry.id not in self._repair_shown
-                          and entry.id not in self._confirmed_empty):
+                          and entry.id not in self._confirmed_empty
+                          and not prev_entry.target_empty):  # only fire when target just became empty
                         self._repair_shown.add(entry.id)
                         logging.info("Empty target detected for %s", entry.id)
                         self._show_empty_target_dialog(entry)
@@ -459,10 +461,144 @@ class App:
             elif entry.status == Status.BROKEN and (not prev_entry or prev_entry.status != Status.BROKEN):
                 send_toast("Sym-Link: 断链", f"{entry.id}: target 不可达")
 
+        self._check_for_new_junctions()
         self._tray.update(self._entries, self._last_sync, self._next_check_time(), confirmed_empty=self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+
+    def _check_for_new_junctions(self):
+        """Auto-register or prompt for unmanaged junctions recently created within a base dir."""
+        bases = mgr.get_machine_config()
+        if not bases:
+            return
+        recent = self._watcher.get_recent_creates(max_age_s=30.0)
+        if not recent:
+            return
+
+        def _norm(p) -> str:
+            return str(p).replace("/", "\\").rstrip("\\").lower()
+
+        base_keys = [_norm(v) for v in bases.values() if v]
+        managed_links = {_norm(e.link) for e in self._entries}
+
+        to_auto:   list[tuple[Path, Path, str]] = []
+        to_prompt: list[tuple[Path, Path, str]] = []
+
+        existing_ids = mgr.get_all_entry_ids()
+
+        for path in recent:
+            # Do NOT resolve() — it follows the junction to the target directory
+            rkey = _norm(path)
+            if rkey in self._pending_new_junction_prompt:
+                continue
+            if rkey in managed_links:
+                continue
+            if not path.is_junction():
+                continue
+            if not any(rkey.startswith(bk + "\\") for bk in base_keys):
+                continue
+            try:
+                target_str = os.readlink(str(path))
+                if target_str.startswith("\\\\?\\"):
+                    target_str = target_str[4:]
+                target = Path(target_str)
+            except OSError:
+                continue
+
+            suggested_id = path.name
+            if suggested_id not in existing_ids:
+                to_auto.append((path, target, suggested_id))
+                existing_ids = existing_ids | {suggested_id}
+            else:
+                to_prompt.append((path, target, suggested_id))
+
+        registered: list[str] = []
+        for path, target, eid in to_auto:
+            ok, err = mgr.create_entry(eid, "", path, target)
+            if ok:
+                logging.info("Auto-registered new junction '%s': %s → %s", eid, path, target)
+                registered.append(eid)
+                try:
+                    if not any(target.iterdir()):
+                        self._repair_shown.add(eid)
+                except OSError:
+                    pass
+            else:
+                logging.warning("Auto-register failed for %s: %s", path, err)
+
+        if registered:
+            mgr.normalize_entries()
+            self._entries = mgr.check_all()
+            names = "、".join(registered)
+            show_banner(self._root, "Sym-Link: 已自动托管新链接",
+                        f"检测到 {len(registered)} 个新 Junction：{names}")
+
+        for path, target, suggested_id in to_prompt:
+            self._pending_new_junction_prompt.add(_norm(path))
+            self._root.after(0, lambda p=path, t=target, s=suggested_id:
+                             self._show_new_junction_dialog(p, t, s))
+
+    def _show_new_junction_dialog(self, path: Path, target: Path, suggested_id: str):
+        """Prompt the user to name a new junction whose auto-ID is already taken."""
+        import tkinter.ttk as ttk
+        from ui.window import _shorten
+        bases = mgr.get_machine_config() or {}
+
+        dlg = tk.Toplevel(self._root)
+        dlg.title("Sym-Link: 发现未管理的 Junction")
+        dlg.resizable(False, False)
+        dlg.attributes("-topmost", True)
+
+        pad = 16
+        ttk.Label(dlg, text="发现未管理的 Junction",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=pad, pady=(pad, 4))
+        ttk.Label(dlg,
+                  text=f"链接：{_shorten(str(path), bases)}\n目标：{_shorten(str(target), bases)}",
+                  justify="left").pack(anchor="w", padx=pad, pady=(0, 4))
+        ttk.Label(dlg, text=f"名称「{suggested_id}」已被占用，请输入新名称：",
+                  justify="left").pack(anchor="w", padx=pad, pady=(0, 4))
+
+        id_var = tk.StringVar(value=suggested_id)
+        id_entry = ttk.Entry(dlg, textvariable=id_var, width=32)
+        id_entry.pack(anchor="w", padx=pad, pady=(0, 8))
+        id_entry.select_range(0, "end")
+        id_entry.focus_set()
+
+        btn_row = ttk.Frame(dlg)
+        btn_row.pack(fill="x", padx=pad, pady=(0, pad))
+
+        def skip():
+            dlg.destroy()   # path stays in _pending; won't re-prompt this session
+
+        def register():
+            from tkinter import messagebox
+            new_id = id_var.get().strip()
+            if not new_id:
+                messagebox.showwarning("名称不能为空", "请输入名称。", parent=dlg)
+                return
+            if new_id in mgr.get_all_entry_ids():
+                messagebox.showerror("名称已占用", f"「{new_id}」已存在，请换一个名称。", parent=dlg)
+                return
+            ok, err = mgr.create_entry(new_id, "", path, target)
+            if ok:
+                logging.info("User-registered junction '%s': %s → %s", new_id, path, target)
+                mgr.normalize_entries()
+                self._pending_new_junction_prompt.discard(
+                    str(path).replace("/", "\\").rstrip("\\").lower())
+                dlg.destroy()
+                self._do_refresh()
+            else:
+                messagebox.showerror("注册失败", err, parent=dlg)
+
+        dlg.bind("<Return>", lambda _e: register())
+        ttk.Button(btn_row, text="跳过", command=skip,     width=8).pack(side="right", padx=(6, 0))
+        ttk.Button(btn_row, text="注册", command=register, width=8).pack(side="right")
+
+        dlg.update_idletasks()
+        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
+        w, h   = dlg.winfo_width(), dlg.winfo_height()
+        dlg.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
 
     def _do_explorer_recovery_link(self, entry: LinkEntry, new_dir: Path):
         """Called ~3 s after detecting Explorer cut+paste of a junction (link)."""
@@ -640,6 +776,12 @@ class App:
         """Called when user saves an entry via the edit dialog."""
         mgr.normalize_entries()
         self._repair_shown.discard(entry_id)
+        # Opening and confirming the edit dialog counts as "user reviewed this entry".
+        # If the target is currently empty, treat it as confirmed so the dialog won't re-fire.
+        entry = next((e for e in self._entries if e.id == entry_id), None)
+        if entry and entry.status == Status.OK and entry.target_empty:
+            self._confirmed_empty.add(entry_id)
+            _save_confirmed_empty(self._confirmed_empty)
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._tray.update(self._entries, self._last_sync, self._next_check_time(),
                           confirmed_empty=self._confirmed_empty)

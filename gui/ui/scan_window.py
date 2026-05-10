@@ -558,6 +558,7 @@ class ScanWindow:
         if self._win and self._win.winfo_exists():
             self._win.destroy()
         self._win = None
+        self._on_done()
 
 
 # ── Module-level helpers ──────────────────────────────────────────────────────

@@ -678,8 +678,9 @@ class StatusWindow:
             bases = _get_bases()
             new_link_json   = _to_json_path(new_link,   bases) if bases else str(new_link)
             new_target_json = _to_json_path(new_target, bases) if bases else str(new_target)
+            from core.symlink_manager import _load_raw
             was_global = entry.id in {
-                r["id"] for r in __import__("symlink_manager")._load_raw().get("symlinks", [])
+                r["id"] for r in _load_raw().get("symlinks", [])
             }
             will_be_local = not _is_global(new_link_json, new_target_json)
             if was_global and will_be_local:
