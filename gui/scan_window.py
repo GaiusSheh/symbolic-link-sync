@@ -13,7 +13,7 @@ import symlink_manager as mgr
 from symlink_manager import (
     _to_json_path, get_scanned,
     ignore_scanned_entry, import_scanned_entry, merge_scanned,
-    get_machine_config, register_machine, rebase,
+    get_machine_config, get_machine_config_full, register_machine, rebase,
 )
 
 
@@ -401,7 +401,7 @@ class ScanWindow:
                 parent=self._win,
             ):
                 return
-            existing = dict(get_machine_config() or {})
+            existing = dict(get_machine_config_full() or {})
             existing[nk] = scan_str
             register_machine(existing)
             self._rel_label.configure(fg="#2E7D32")

@@ -255,7 +255,7 @@ class BackgroundWatcher:
         name_lower = name.lower()
         for ts, path in reversed(list(self._recent_creates)):
             if now - ts > max_age_s:
-                break
+                continue
             if path.name.lower() == name_lower and path.is_dir():
                 return path
         return None

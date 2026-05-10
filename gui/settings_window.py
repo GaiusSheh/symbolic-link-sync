@@ -208,6 +208,9 @@ class SettingsWindow:
                             raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
                             for k, v in raw.get("target_override", {}).items():
                                 raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
+                        for raw in mc_data.get("scanned", []):
+                            raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
+                            raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
                 mgr._save_raw(cfg)
 
         required = mgr.get_required_bases()
