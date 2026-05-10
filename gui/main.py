@@ -454,6 +454,13 @@ class App:
             if os.path.lexists(entry.link):
                 mgr._remove_link(entry.link)
 
+            # Verify move completed fully before touching new_dir
+            remaining = list(new_dir.iterdir())
+            if remaining:
+                raise RuntimeError(
+                    f"移动未完全成功，{len(remaining)} 个文件仍在 {new_dir}，已中止修复"
+                )
+
             # Remove new_dir (now empty) and create junction there
             new_dir.rmdir()
             ok, err = mgr._create_junction(new_dir, entry.target)

@@ -213,6 +213,8 @@ def _all_machines_have_keys(cfg: dict, keys: set[str]) -> bool:
 
     A key is "handled" when it's present in the machine config (confirmed or ignored/null).
     """
+    if not cfg.get("machines"):
+        return False
     return all(
         all(k in (mc or {}) for k in keys)
         for mc in cfg.get("machines", {}).values()
@@ -1059,6 +1061,28 @@ def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], lis
         if ch:
             affected[eid] = ch
 
+    for raw in cfg.get("local_data", {}).get(machine, {}).get("symlinks", []):
+        eid = raw["id"]
+        if eid in affected:
+            continue
+        ch = {}
+        link_path = _resolve(raw["link"], bases)
+        try:
+            rel = link_path.relative_to(old_base)
+            ch["link"]     = new_base / rel
+            ch["old_link"] = link_path
+        except ValueError:
+            pass
+        target_path = _resolve(raw.get("target", ""), bases)
+        try:
+            rel = target_path.relative_to(old_base)
+            ch["target"]          = new_base / rel
+            ch["target_override"] = False
+        except ValueError:
+            pass
+        if ch:
+            affected[eid] = ch
+
     if not affected:
         return [], []
 
@@ -1076,6 +1100,16 @@ def repath_entries(old_base_str: str, new_base_str: str) -> tuple[list[str], lis
                         raw["target_override"][k] = s
             else:
                 raw["target"] = s
+
+    for raw in cfg.get("local_data", {}).get(machine, {}).get("symlinks", []):
+        ch = affected.get(raw["id"])
+        if ch is None:
+            continue
+        if "link" in ch:
+            raw["link"] = _to_json_path(ch["link"], bases)
+        if "target" in ch:
+            raw["target"] = _to_json_path(ch["target"], bases)
+
     _save_raw(cfg)
 
     updated: list[str] = []

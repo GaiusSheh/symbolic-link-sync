@@ -104,19 +104,22 @@ class _DriveRootThread(threading.Thread):
         self._drive          = drive
         self._recent_creates = recent_creates
         self._stop           = threading.Event()
-        self._fhandle        = None   # Win32 HANDLE (not threading.Thread._handle)
+        self._fhandle        = None          # Win32 HANDLE (not threading.Thread._handle)
+        self._fhandle_lock   = threading.Lock()
 
     def stop(self) -> None:
         self._stop.set()
-        if self._fhandle:
+        with self._fhandle_lock:
+            h, self._fhandle = self._fhandle, None
+        if h is not None:
             try:
-                win32file.CloseHandle(self._fhandle)   # unblocks ReadDirectoryChangesW
+                win32file.CloseHandle(h)     # unblocks ReadDirectoryChangesW
             except Exception:
                 pass
 
     def run(self) -> None:
         try:
-            self._fhandle = win32file.CreateFile(
+            h = win32file.CreateFile(
                 str(self._drive),
                 win32con.GENERIC_READ,
                 win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE,
@@ -126,6 +129,11 @@ class _DriveRootThread(threading.Thread):
         except Exception as exc:
             logger.warning("DriveRootThread: cannot open %s: %s", self._drive, exc)
             return
+        with self._fhandle_lock:
+            if self._stop.is_set():          # stop() called before CreateFile returned
+                win32file.CloseHandle(h)
+                return
+            self._fhandle = h
         try:
             while not self._stop.is_set():
                 try:
@@ -145,11 +153,13 @@ class _DriveRootThread(threading.Thread):
                     if not self._stop.is_set():
                         time.sleep(1)
         finally:
-            try:
-                win32file.CloseHandle(self._fhandle)
-            except Exception:
-                pass
-            self._fhandle = None
+            with self._fhandle_lock:
+                h, self._fhandle = self._fhandle, None
+            if h is not None:
+                try:
+                    win32file.CloseHandle(h)
+                except Exception:
+                    pass
 
 
 class BackgroundWatcher:

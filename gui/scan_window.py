@@ -395,6 +395,12 @@ class ScanWindow:
 
         elif kind == "unrelated":
             nk = Path(scan_str).name.lower().replace(" ", "_")
+            if not messagebox.askyesno(
+                "注册新 base",
+                f"扫描目录与现有 base 无关联，是否将其注册为新 base {{{nk}}}？",
+                parent=self._win,
+            ):
+                return
             existing = dict(get_machine_config() or {})
             existing[nk] = scan_str
             register_machine(existing)
