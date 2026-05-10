@@ -32,7 +32,7 @@ def show_banner(root: tk.Tk, title: str, body: str, duration_ms: int = 4000) -> 
         logger.warning("show_banner failed: %s", e)
 
 
-def send_toast(title: str, body: str, on_click=None) -> None:
+def send_toast(title: str, body: str) -> None:
     try:
         from winotify import Notification, audio
         toast = Notification(
@@ -42,8 +42,6 @@ def send_toast(title: str, body: str, on_click=None) -> None:
             duration="short",
         )
         toast.set_audio(audio.Default, loop=False)
-        if on_click:
-            toast.add_actions(label="打开", launch="")
         toast.show()
     except Exception as e:
         logger.warning("winotify failed (%s), falling back to messagebox", e)

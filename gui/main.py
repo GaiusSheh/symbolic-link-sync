@@ -374,7 +374,7 @@ class App:
                         send_toast("Sym-Link: 已自动更新", msg)
                         show_banner(self._root, "Sym-Link: 已自动更新", msg)
                         self._entries = mgr.check_all()
-                        break  # prev dict is stale after mid-loop reassignment
+                        continue  # process remaining entries; stale prev is harmless here
                     else:
                         logging.warning("Dir move: no destination found for %s", entry.id)
                         self._show_repair_dialog(entry, "目录已移动，但无法找到新位置，请手动更新路径。")
@@ -753,8 +753,7 @@ class App:
         """Called when user saves an entry via the edit dialog."""
         mgr.normalize_entries()
         self._repair_shown.discard(entry_id)
-        # Opening and confirming the edit dialog counts as "user reviewed this entry".
-        # If the target is currently empty, treat it as confirmed so the dialog won't re-fire.
+        self._entries = mgr.check_all()   # refresh before checking target_empty
         entry = next((e for e in self._entries if e.id == entry_id), None)
         if entry and entry.status == Status.OK and entry.target_empty:
             self._confirmed_empty.add(entry_id)

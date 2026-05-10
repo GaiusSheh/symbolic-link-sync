@@ -25,8 +25,7 @@ def tray_icon(color_key: str) -> Image.Image:
 
 def app_icon(size: int = 256) -> Image.Image:
     """Window / taskbar icon (always blue)."""
-    src = "chain_256.png" if size <= 256 else "chain_512.png"
-    img = _load(src)
+    img = _load("chain_256.png")
     if img.size != (size, size):
         return img.resize((size, size), Image.LANCZOS)
     return img

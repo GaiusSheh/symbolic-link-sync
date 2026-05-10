@@ -5,12 +5,31 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 
-def center_window(win: tk.Toplevel) -> None:
-    """Center a Toplevel on the screen (uses update_idletasks for accurate size)."""
-    win.update_idletasks()
+def center_window(win: tk.Toplevel | tk.Tk) -> None:
+    """Center a window on the screen."""
+    win.update()
     w, h = win.winfo_width(), win.winfo_height()
     sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
     win.geometry(f"+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2)}")
+
+
+def center_on_parent(dlg: tk.Toplevel, parent: tk.Toplevel) -> None:
+    """Center a dialog relative to its parent window."""
+    dlg.update()
+    pw, ph = parent.winfo_width(), parent.winfo_height()
+    px, py = parent.winfo_rootx(), parent.winfo_rooty()
+    dw, dh = dlg.winfo_width(), dlg.winfo_height()
+    dlg.geometry(f"+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
+
+
+def iid_escape(s: str) -> str:
+    """Escape { } in a path string for use as a Treeview iid."""
+    return s.replace("{", "__LB__").replace("}", "__RB__")
+
+
+def iid_unescape(s: str) -> str:
+    """Reverse iid_escape: restore { } from __LB__/__RB__ placeholders."""
+    return s.replace("__LB__", "{").replace("__RB__", "}")
 
 
 def shorten_path(path: str, bases: dict[str, str]) -> str:

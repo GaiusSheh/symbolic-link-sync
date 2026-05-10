@@ -15,7 +15,7 @@ from core.symlink_manager import (
     ignore_scanned_entry, import_scanned_entry, merge_scanned,
     get_machine_config, get_machine_config_full, register_machine, rebase,
 )
-from ui.utils import shorten_path
+from ui.utils import iid_escape, iid_unescape, shorten_path
 
 
 def _truncate_path(path: str, display_depth: int) -> str:
@@ -426,8 +426,7 @@ class ScanWindow:
             link_disp   = _shorten_multi(e["link"], bases)
             target_disp = _shorten_multi(e["target"], bases)
             mtime_disp  = e.get("mtime", "")[:16].replace("T", " ")
-            esc = lambda s: s.replace("{", "__LB__").replace("}", "__RB__")
-            tree.insert("", "end", iid=esc(e["link"]) + "||" + esc(e["target"]),
+            tree.insert("", "end", iid=iid_escape(e["link"]) + "||" + iid_escape(e["target"]),
                         values=(mtime_disp, link_disp, target_disp))
         self._import_frame.pack_forget()
 
@@ -451,7 +450,7 @@ class ScanWindow:
             return
         iid = sel[0]
         link_esc, _, _ = iid.partition("||")
-        link_str  = link_esc.replace("__LB__", "{").replace("__RB__", "}")
+        link_str  = iid_unescape(link_esc)
         suggested = Path(link_str).name
         self._id_var.set(suggested)
         self._desc_var.set("")
@@ -465,7 +464,7 @@ class ScanWindow:
         iid = sel[0]
         link_esc, _, target_esc = iid.partition("||")
         link_str   = link_esc.replace("__LB__", "{").replace("__RB__", "}")
-        target_str = target_esc.replace("__LB__", "{").replace("__RB__", "}")
+        target_str = iid_unescape(target_esc)
         return iid, link_str, target_str
 
     def _do_import(self):

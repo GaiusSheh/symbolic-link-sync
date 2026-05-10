@@ -7,14 +7,7 @@ from typing import Callable
 
 from core import settings_manager as sm
 from core import symlink_manager as mgr
-from ui.utils import apply_base_registration, build_base_row
-
-
-def _center(win: tk.Toplevel):
-    win.update()
-    w, h = win.winfo_width(), win.winfo_height()
-    sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
-    win.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
+from ui.utils import apply_base_registration, build_base_row, center_window
 
 
 class SettingsWindow:
@@ -98,7 +91,7 @@ class SettingsWindow:
         ttk.Button(btn_row, text="确定", command=self._apply,
                    width=10).pack(side="right")
 
-        _center(win)
+        center_window(win)
         win.lift()
         win.focus_force()
 
@@ -156,30 +149,7 @@ class SettingsWindow:
                     )
                     return
             if valid_renames:
-                cfg = mgr._load_raw()
-                for old_key, new_key in valid_renames:
-                    old_tmpl = "{" + old_key + "}"
-                    new_tmpl = "{" + new_key + "}"
-                    for raw in cfg.get("symlinks", []):
-                        raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
-                        raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
-                        for k, v in raw.get("target_override", {}).items():
-                            raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
-                    for mc_data in cfg.get("local_data", {}).values():
-                        for raw in mc_data.get("symlinks", []):
-                            raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
-                            raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
-                            for k, v in raw.get("target_override", {}).items():
-                                raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
-                        for raw in mc_data.get("scanned", []):
-                            raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
-                            raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
-                # Update ALL machines' entries so no machine is left with the old key name
-                for mc in cfg.get("machines", {}).values():
-                    for old_key, new_key in valid_renames:
-                        if old_key in mc:
-                            mc[new_key] = mc.pop(old_key)
-                mgr._save_raw(cfg)
+                mgr.rename_base_key(valid_renames)
 
         if not apply_base_registration(self._win, bases, "不使用"):
             return

@@ -13,7 +13,7 @@ from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa:
                                    create_entry, delete_entry, edit_entry,
                                    get_scanned, get_machine_config,
                                    get_other_machines_local_entries)
-from ui.utils import shorten_path
+from ui.utils import center_window, center_on_parent, iid_escape, iid_unescape, shorten_path
 
 _STATUS_LABEL = {
     Status.OK:      "✅ 正常",
@@ -24,21 +24,6 @@ _STATUS_LABEL = {
 
 _JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
 
-
-def _center(win: tk.Toplevel | tk.Tk):
-    """Move window to screen center without changing its current size."""
-    win.update()
-    w, h = win.winfo_width(), win.winfo_height()
-    sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
-    win.geometry(f"+{max(0,(sw-w)//2)}+{max(0,(sh-h)//2)}")
-
-
-def _center_on(dlg: tk.Toplevel, parent: tk.Toplevel):
-    dlg.update()
-    pw, ph = parent.winfo_width(), parent.winfo_height()
-    px, py = parent.winfo_rootx(), parent.winfo_rooty()
-    dw, dh = dlg.winfo_width(), dlg.winfo_height()
-    dlg.geometry(f"+{px+(pw-dw)//2}+{py+(ph-dh)//2}")
 
 
 class StatusWindow:
@@ -167,7 +152,7 @@ class StatusWindow:
         tree.bind("<Delete>",    self._on_delete_key)
 
         self._populate(entries)
-        _center(win)
+        center_window(win)
 
     def _populate(self, entries: list[LinkEntry]):
         tree = self._tree
@@ -214,10 +199,7 @@ class StatusWindow:
                         tags=("separator",))
             for s in scanned:
                 # Escape Tcl metacharacters { } which cause TclError in some tk versions
-                iid = ("scan::"
-                       + s["link"].replace("{", "__LB__").replace("}", "__RB__")
-                       + "||"
-                       + s["target"].replace("{", "__LB__").replace("}", "__RB__"))
+                iid = "scan::" + iid_escape(s["link"]) + "||" + iid_escape(s["target"])
                 tree.insert("", "end", iid=iid,
                             values=("🔍 未管理", s["link"].split("/")[-1],
                                     "",
@@ -333,8 +315,8 @@ class StatusWindow:
     def _scan_context_menu(self, event, iid):
         _, _, rest = iid.partition("::")
         link_esc, _, target_esc = rest.partition("||")
-        link_str   = link_esc.replace("__LB__", "{").replace("__RB__", "}")
-        target_str = target_esc.replace("__LB__", "{").replace("__RB__", "}")
+        link_str   = iid_unescape(link_esc)
+        target_str = iid_unescape(target_esc)
         menu = tk.Menu(self._win, tearoff=0)
         menu.add_command(label="导入管理",
                          command=lambda: self._open_import_dialog(iid))
@@ -454,8 +436,8 @@ class StatusWindow:
         from core.symlink_manager import import_scanned_entry
         _, _, rest = iid.partition("::")
         link_str, _, target_str = rest.partition("||")
-        link_str   = link_str.replace("__LB__", "{").replace("__RB__", "}")
-        target_str = target_str.replace("__LB__", "{").replace("__RB__", "}")
+        link_str   = iid_unescape(link_str)
+        target_str = iid_unescape(target_str)
 
         dlg = tk.Toplevel(self._win)
         dlg.title("导入为管理条目")
@@ -711,7 +693,7 @@ class StatusWindow:
 
         ttk.Button(btn_row, text="取消", command=dlg.destroy, width=8).pack(side="right", padx=(6, 0))
         ttk.Button(btn_row, text="确定", command=confirm,     width=8).pack(side="right")
-        _center_on(dlg, self._win)
+        center_on_parent(dlg, self._win)
 
     # ── New entry dialog ──────────────────────────────────────────────────────
 
@@ -757,7 +739,7 @@ class StatusWindow:
 
         ttk.Button(btn_row, text="取消", command=dlg.destroy, width=8).pack(side="right", padx=(6, 0))
         ttk.Button(btn_row, text="创建", command=do_create,   width=8).pack(side="right")
-        _center_on(dlg, self._win)
+        center_on_parent(dlg, self._win)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

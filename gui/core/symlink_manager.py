@@ -377,6 +377,36 @@ def detect_sync_services() -> dict[str, str]:
     return found
 
 
+def rename_base_key(renames: list[tuple[str, str]]) -> None:
+    """Rename one or more base keys in all template paths (pure string rename).
+
+    Each element of renames is (old_key, new_key). All renames are applied in a
+    single load/save to avoid repeated I/O.
+    """
+    cfg = _load_raw()
+    pairs = [("{" + old + "}", "{" + new + "}") for old, new in renames]
+
+    def _rw(s: str) -> str:
+        for old_tmpl, new_tmpl in pairs:
+            s = s.replace(old_tmpl, new_tmpl)
+        return s
+
+    for raw in cfg.get("symlinks", []):
+        raw["link"]   = _rw(raw.get("link", ""))
+        raw["target"] = _rw(raw.get("target", ""))
+        for k, v in raw.get("target_override", {}).items():
+            raw["target_override"][k] = _rw(v)
+    for mc_data in cfg.get("local_data", {}).values():
+        for raw in mc_data.get("symlinks", []) + mc_data.get("scanned", []):
+            raw["link"]   = _rw(raw.get("link", ""))
+            raw["target"] = _rw(raw.get("target", ""))
+    for mc in cfg.get("machines", {}).values():
+        for old_key, new_key in renames:
+            if old_key in mc:
+                mc[new_key] = mc.pop(old_key)
+    _save_raw(cfg)
+
+
 def rebase(old_key: str, new_key: str, new_path: str) -> None:
     """Promote a parent directory as the new base for an existing base.
 
