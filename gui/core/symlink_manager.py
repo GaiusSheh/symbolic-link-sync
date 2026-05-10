@@ -512,8 +512,8 @@ def get_required_bases() -> set[str]:
     cfg  = _load_raw()
     keys: set[str] = set()
     for raw in cfg.get("symlinks", []):
-        for field in ("link", "target"):
-            keys.update(re.findall(r"\{(\w+)\}", raw.get(field, "")))
+        for fld in ("link", "target"):
+            keys.update(re.findall(r"\{(\w+)\}", raw.get(fld, "")))
         for v in raw.get("target_override", {}).values():
             keys.update(re.findall(r"\{(\w+)\}", v))
     return keys
@@ -804,10 +804,6 @@ def delete_entry(entry_id: str, remove_junction: bool = True) -> tuple[bool, str
     return True, ""
 
 
-def repair(entry_id: str, new_target: Path) -> bool:
-    return edit_entry(entry_id, new_target=new_target)
-
-
 def edit_entry(entry_id: str,
                new_target:      Optional[Path] = None,
                new_description: Optional[str]  = None,
@@ -894,6 +890,10 @@ def edit_entry(entry_id: str,
                     return False
             return True
 
+    # Entry not found in check_all (e.g. base not configured on this machine).
+    # If a structural change was requested the junction was never rebuilt — report failure.
+    if link_changed or new_link is not None or new_target is not None:
+        return False
     return True
 
 

@@ -52,10 +52,9 @@ class _AncestorDirHandler(FileSystemEventHandler):
     on_deleted:             debounce refresh
     """
 
-    def __init__(self, event_queue: queue.Queue, recent_creates: deque):
+    def __init__(self, event_queue: queue.Queue):
         super().__init__()
         self._q = event_queue
-        self._recent_creates = recent_creates
         self._debounce: threading.Timer | None = None
         self._lock = threading.Lock()
 
@@ -128,7 +127,7 @@ class _DriveRootThread(threading.Thread):
         with self._debounce_lock:
             if self._refresh_debounce:
                 self._refresh_debounce.cancel()
-            t = threading.Timer(1.0, lambda: self._q.put(("refresh",)))
+            t = threading.Timer(1.0, lambda: self._stop.is_set() or self._q.put(("refresh",)))
             t.daemon = True
             t.start()
             self._refresh_debounce = t
@@ -190,7 +189,7 @@ class BackgroundWatcher:
         self._running = False
         self._dir_watches: dict[Path, object] = {}   # Path → watchdog Watch
         self._recent_creates: deque = deque(maxlen=200)
-        self._ancestor_handler = _AncestorDirHandler(self._q, self._recent_creates)
+        self._ancestor_handler = _AncestorDirHandler(self._q)
         self._drive_threads: dict[Path, _DriveRootThread] = {}
 
     def set_interval(self, seconds: int) -> None:

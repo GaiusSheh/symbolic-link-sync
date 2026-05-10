@@ -46,7 +46,7 @@ def _exe_path() -> str:
     pythonw = Path(sys.executable).parent / "pythonw.exe"
     if not pythonw.exists():
         pythonw = Path(sys.executable)
-    main = Path(__file__).parent / "main.py"
+    main = Path(__file__).parent.parent / "main.py"
     return f'"{pythonw}" "{main}"'
 
 

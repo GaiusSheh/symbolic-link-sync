@@ -25,6 +25,7 @@ from typing import Optional
 from core import settings_manager as sm
 from core import symlink_manager as mgr
 from ui.icons import app_icon
+from ui.utils import center_window
 
 _STATE_PATH = Path(__file__).parent / "state.json"
 
@@ -585,10 +586,7 @@ class App:
         ttk.Button(btn_row, text="跳过", command=skip,     width=8).pack(side="right", padx=(6, 0))
         ttk.Button(btn_row, text="注册", command=register, width=8).pack(side="right")
 
-        dlg.update_idletasks()
-        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
-        w, h   = dlg.winfo_width(), dlg.winfo_height()
-        dlg.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
+        center_window(dlg)
 
     def _do_explorer_recovery_link(self, entry: LinkEntry, new_dir: Path):
         """Called ~3 s after detecting Explorer cut+paste of a junction (link)."""
@@ -656,10 +654,7 @@ class App:
         ttk.Button(btn_row, text="立即修改", command=edit_now, width=12).pack(side="left")
         ttk.Button(btn_row, text="稍后修改", command=dlg.destroy, width=12).pack(side="left", padx=(8, 0))
 
-        dlg.update_idletasks()
-        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
-        w, h = dlg.winfo_width(), dlg.winfo_height()
-        dlg.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
+        center_window(dlg)
 
     def _show_empty_target_dialog(self, entry: LinkEntry):
         """Dialog when target is empty: let user confirm intentional or open status list."""
@@ -695,10 +690,7 @@ class App:
         ttk.Button(btn_row, text="立即修改",        command=edit_now,       width=10).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="稍后处理",        command=dlg.destroy,   width=10).pack(side="left", padx=(8, 0))
 
-        dlg.update_idletasks()
-        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
-        w, h = dlg.winfo_width(), dlg.winfo_height()
-        dlg.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
+        center_window(dlg)
 
     def _do_explorer_recovery_target(self, entry: LinkEntry, new_dir: Path):
         """Target was moved cross-drive; just update JSON and rebuild junction."""

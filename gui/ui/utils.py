@@ -2,7 +2,15 @@
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
+
+
+def center_window(win: tk.Toplevel) -> None:
+    """Center a Toplevel on the screen (uses update_idletasks for accurate size)."""
+    win.update_idletasks()
+    w, h = win.winfo_width(), win.winfo_height()
+    sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
+    win.geometry(f"+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2)}")
 
 
 def shorten_path(path: str, bases: dict[str, str]) -> str:
@@ -85,3 +93,47 @@ def build_base_row(
 
     ttk.Button(row_frame, text="✕", command=remove, width=3).pack(side="left")
     return row
+
+
+def apply_base_registration(parent_win: tk.Toplevel,
+                             bases: dict,
+                             not_used_label: str = "不使用") -> bool:
+    """Handle missing-bases dialog, register_machine, normalize_entries.
+
+    Mutates bases in place (adds missing keys as None if user chooses local).
+    Returns True on success, False on cancel/validation error.
+    """
+    from core import symlink_manager as mgr
+    from ui.dialogs import ask_missing_bases
+
+    required = mgr.get_required_bases()
+    missing  = required - set(bases.keys())
+    if missing:
+        choice = ask_missing_bases(parent_win, missing)
+        if choice == "cancel":
+            return False
+        elif choice == "local":
+            mgr.demote_base_entries_local(missing)
+            bases.update({k: None for k in missing})
+        else:  # global
+            mgr.demote_base_entries(missing)
+            still_missing = mgr.get_required_bases() - set(bases.keys())
+            if still_missing:
+                messagebox.showwarning(
+                    "Base 未完整配置",
+                    "以下 base 仍未配置：\n\n"
+                    + "\n".join(f"  {{{k}}}" for k in sorted(still_missing))
+                    + f"\n\n请补充配置或勾选「{not_used_label}」后再确认。",
+                    parent=parent_win,
+                )
+                return False
+
+    mgr.register_machine(bases)
+    _, n_promoted = mgr.normalize_entries()
+    if n_promoted:
+        messagebox.showinfo(
+            "条目已提升为全局",
+            f"{n_promoted} 个条目现已对所有计算机可见。",
+            parent=parent_win,
+        )
+    return True

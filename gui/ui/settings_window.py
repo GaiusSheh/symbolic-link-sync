@@ -7,7 +7,7 @@ from typing import Callable
 
 from core import settings_manager as sm
 from core import symlink_manager as mgr
-from ui.utils import build_base_row
+from ui.utils import apply_base_registration, build_base_row
 
 
 def _center(win: tk.Toplevel):
@@ -181,39 +181,8 @@ class SettingsWindow:
                             mc[new_key] = mc.pop(old_key)
                 mgr._save_raw(cfg)
 
-        required = mgr.get_required_bases()
-        missing  = required - set(bases.keys())
-        if missing:
-            from ui.dialogs import ask_missing_bases
-            choice = ask_missing_bases(self._win, missing)
-            if choice == "cancel":
-                return
-            elif choice == "local":
-                mgr.demote_base_entries_local(missing)
-                bases.update({k: None for k in missing})   # mark all as 不使用
-            else:  # global
-                mgr.demote_base_entries(missing)
-                required = mgr.get_required_bases()
-                still_missing = required - set(bases.keys())
-                if still_missing:
-                    messagebox.showwarning(
-                        "Base 未完整配置",
-                        f"以下 base 仍未配置：\n\n"
-                        + "\n".join(f"  {{{k}}}" for k in sorted(still_missing))
-                        + "\n\n请补充配置或勾选「不使用」后再保存。",
-                        parent=self._win,
-                    )
-                    return
-
-        mgr.register_machine(bases)
-        _, n_promoted = mgr.normalize_entries()
-        if n_promoted:
-            from tkinter import messagebox as _mb
-            _mb.showinfo(
-                "条目已提升为全局",
-                f"{n_promoted} 个条目现已对所有计算机可见。",
-                parent=self._win,
-            )
+        if not apply_base_registration(self._win, bases, "不使用"):
+            return
 
         # ── Apply other settings ──────────────────────────────────────────────
         interval = max(1, min(1440, self._interval_var.get()))

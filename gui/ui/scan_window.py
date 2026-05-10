@@ -346,7 +346,6 @@ class ScanWindow:
             summary += f" — 仅显示最近 {len(display_results)} 条，其余请查阅 JSON"
         self._prog_var.set(f"扫描完成　{summary}")
         self._summary_var.set("")
-        self._done_btn.configure(state="normal")   # light up after scan
         self._populate_results(display_results)
 
         # Handle base registration / re-base after scan

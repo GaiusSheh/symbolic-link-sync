@@ -5,7 +5,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from core import symlink_manager as mgr
-from ui.utils import build_base_row
+from ui.utils import apply_base_registration, build_base_row
 
 
 class RegistrationWindow:
@@ -122,38 +122,8 @@ class RegistrationWindow:
             messagebox.showwarning("至少一条", "请至少填写一条同步目录配置。", parent=self._win)
             return
 
-        required = mgr.get_required_bases()
-        missing  = required - set(bases.keys())
-        if missing:
-            from ui.dialogs import ask_missing_bases
-            choice = ask_missing_bases(self._win, missing)
-            if choice == "cancel":
-                return
-            elif choice == "local":
-                mgr.demote_base_entries_local(missing)
-                bases.update({k: None for k in missing})   # mark all as 不使用
-            else:  # global
-                mgr.demote_base_entries(missing)
-                required = mgr.get_required_bases()
-                still_missing = required - set(bases.keys())
-                if still_missing:
-                    messagebox.showwarning(
-                        "Base 未完整配置",
-                        f"以下 base 仍未配置：\n\n"
-                        + "\n".join(f"  {{{k}}}" for k in sorted(still_missing))
-                        + "\n\n请补充配置或勾选「此机器不使用」后再确认。",
-                        parent=self._win,
-                    )
-                    return
-
-        mgr.register_machine(bases)
-        _, n_promoted = mgr.normalize_entries()
-        if n_promoted:
-            messagebox.showinfo(
-                "条目已提升为全局",
-                f"{n_promoted} 个条目现已对所有计算机可见。",
-                parent=self._win,
-            )
+        if not apply_base_registration(self._win, bases, "此机器不使用"):
+            return
         self._registered = True
         self._win.destroy()
 
