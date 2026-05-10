@@ -162,6 +162,10 @@ class SettingsWindow:
                 messagebox.showwarning("名称不能为空", "请为每条同步目录填写名称。",
                                        parent=self._win)
                 return
+            if name in bases:
+                messagebox.showwarning("名称重复", f"名称「{name}」重复，请修改。",
+                                       parent=self._win)
+                return
             if ignored:
                 bases[name] = None
             else:
@@ -175,23 +179,35 @@ class SettingsWindow:
                 renames.append((orig, name))
 
         # ── Apply base renames (rebase template keys) ─────────────────────────
-        for old_key, new_key in renames:
-            if old_key in (mgr.get_machine_config_full() or {}):
-                # Rewrite {old_key} → {new_key} in all symlink paths
+        if renames:
+            saved_config = mgr.get_machine_config_full() or {}
+            valid_renames = [(old, new) for old, new in renames if old in saved_config]
+            # Conflict check: new_key must not already exist unless it is itself being renamed away
+            old_keys = {old for old, _ in valid_renames}
+            for old_key, new_key in valid_renames:
+                if new_key in saved_config and new_key not in old_keys:
+                    messagebox.showwarning(
+                        "名称冲突",
+                        f"将「{old_key}」改名为「{new_key}」与现有 base 冲突，请换一个名称。",
+                        parent=self._win,
+                    )
+                    return
+            if valid_renames:
                 cfg = mgr._load_raw()
-                old_tmpl = "{" + old_key + "}"
-                new_tmpl = "{" + new_key + "}"
-                for raw in cfg.get("symlinks", []):
-                    raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
-                    raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
-                    for k, v in raw.get("target_override", {}).items():
-                        raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
-                for mc_data in cfg.get("local_data", {}).values():
-                    for raw in mc_data.get("symlinks", []):
+                for old_key, new_key in valid_renames:
+                    old_tmpl = "{" + old_key + "}"
+                    new_tmpl = "{" + new_key + "}"
+                    for raw in cfg.get("symlinks", []):
                         raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
                         raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
                         for k, v in raw.get("target_override", {}).items():
                             raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
+                    for mc_data in cfg.get("local_data", {}).values():
+                        for raw in mc_data.get("symlinks", []):
+                            raw["link"]   = raw.get("link", "").replace(old_tmpl, new_tmpl)
+                            raw["target"] = raw.get("target", "").replace(old_tmpl, new_tmpl)
+                            for k, v in raw.get("target_override", {}).items():
+                                raw["target_override"][k] = v.replace(old_tmpl, new_tmpl)
                 mgr._save_raw(cfg)
 
         required = mgr.get_required_bases()
