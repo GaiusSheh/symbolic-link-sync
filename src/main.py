@@ -65,7 +65,7 @@ def _setup_logging():
     Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
     handler = logging.FileHandler(_LOG_PATH, encoding="utf-8")
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
         handlers=[handler, logging.StreamHandler(sys.stdout)],
     )
