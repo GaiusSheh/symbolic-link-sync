@@ -12,5 +12,5 @@ $srcDir = "$PSScriptRoot\src"
     --add-data "$srcDir\ui\assets;ui/assets" `
     --distpath "$PSScriptRoot\dist" `
     --workpath "$PSScriptRoot\build" `
-    --specpath "$srcDir" `
+    --specpath "$PSScriptRoot" `
     "$srcDir\main.py"
