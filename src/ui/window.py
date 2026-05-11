@@ -423,6 +423,9 @@ class StatusWindow:
         sep = _ttk.Separator(dlg, orient="horizontal")
         sep.pack(fill="x", padx=12, pady=6)
 
+        from core.symlink_manager import get_all_entry_ids
+        conflict_ids = get_all_entry_ids()
+
         _, id_var, desc_text, target_var, link_var = self._build_entry_form(
             dlg,
             id_val=entry_id,
@@ -430,6 +433,19 @@ class StatusWindow:
             target_val=pre_target,
             link_val=pre_link,
         )
+
+        # Warn if the entry ID already exists on this machine
+        warn_lbl = _ttk.Label(dlg, foreground="#E65100", padding=(16, 0, 16, 4))
+        warn_lbl.pack(fill="x")
+
+        def _update_warn(*_):
+            eid = id_var.get().strip()
+            if eid in conflict_ids:
+                warn_lbl.configure(text=f"⚠️ 本机已有名为「{eid}」的条目，请修改上方名称后再配置。")
+            else:
+                warn_lbl.configure(text="")
+        id_var.trace_add("write", _update_warn)
+        _update_warn()
 
         btn_row = _ttk.Frame(dlg, padding=(12, 0, 12, 12))
         btn_row.pack(fill="x")
@@ -457,7 +473,11 @@ class StatusWindow:
                     confirm(force=True); return
 
             from core.symlink_manager import create_entry, ERR_LINK_NONEMPTY
-            ok, err = create_entry(eid, desc, link_path, target_path, force_overwrite=force)
+            try:
+                ok, err = create_entry(eid, desc, link_path, target_path, force_overwrite=force)
+            except Exception as exc:
+                messagebox.showerror("配置失败", f"发生未预期的错误：{exc}", parent=dlg)
+                return
             if ok:
                 dlg.destroy()
                 self._on_refresh_needed()
@@ -501,7 +521,7 @@ class StatusWindow:
         ttk_dlg.Label(outer, text=_shorten(target_str, bases), anchor="w").grid(row=1, column=1, sticky="w")
 
         ttk_dlg.Label(outer, text="名称（必填）：", anchor="e").grid(row=2, column=0, sticky="e", padx=(0,8), pady=(12,4))
-        id_var = tk.StringVar()
+        id_var = tk.StringVar(value=Path(link_str).name)
         ttk_dlg.Entry(outer, textvariable=id_var, width=36).grid(row=2, column=1, sticky="ew", pady=(12,4))
 
         ttk_dlg.Label(outer, text="描述（可选）：", anchor="e").grid(row=3, column=0, sticky="e", padx=(0,8), pady=4)

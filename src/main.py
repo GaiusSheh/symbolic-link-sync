@@ -112,6 +112,7 @@ class App:
         self._confirmed_empty: set[str] = _load_confirmed_empty()
         self._quitting = False
         self._pending_new_junction_prompt: set[str] = set()  # lower-case normalised path strings
+        self._pending_bases_notified: set[str] = set()  # bases already shown in dialog this session
 
         self._tray = TrayIcon(
             event_queue=self._q,
@@ -151,7 +152,7 @@ class App:
 
         # Prompt registration if machine not yet configured
         if not mgr.is_registered():
-            RegistrationWindow(self._root).show_modal()
+            RegistrationWindow(self._root, on_registered=self._on_new_bases_registered).show_modal()
 
         # After first-run wizard: warn if symlinks.json is outside all bases
         if self._first_run_wizard:
@@ -472,6 +473,7 @@ class App:
 
         self._check_for_new_junctions()
         self._refresh_ui()
+        self._root.after(100, self._check_pending_bases)
 
     def _check_for_new_junctions(self):
         """Auto-register or prompt for unmanaged junctions recently created within a base dir."""
@@ -728,8 +730,23 @@ class App:
     def _do_open_scan(self):
         self._scan_window.show(self._entries)
 
+    def _on_new_bases_registered(self, new_paths: list[str]):
+        """Called after registration when new base paths were added. Offer to scan them."""
+        self._entries = mgr.check_all()
+        self._refresh_ui()
+        if not new_paths:
+            return
+        from tkinter import messagebox
+        paths_str = "\n".join(new_paths)
+        if messagebox.askyesno(
+            "扫描新同步目录",
+            f"已添加以下同步目录：\n{paths_str}\n\n是否立即扫描以导入已有 Junction？",
+            parent=self._root,
+        ):
+            self._scan_window.show(self._entries, scan_dir=new_paths[0])
+
     def _do_manage_bases(self):
-        RegistrationWindow(self._root).show()
+        RegistrationWindow(self._root, on_registered=self._on_new_bases_registered).show()
 
     def _check_symlinks_location(self):
         """Warn if symlinks.json is not under any registered base (sync may not work)."""
@@ -750,26 +767,81 @@ class App:
             )
 
     def _check_pending_bases(self):
-        """Show a warning if global symlinks use bases not yet handled on this machine."""
-        pending = mgr.get_pending_bases()
-        if not pending:
-            return
+        """Show a dialog if global symlinks use bases not yet handled on this machine.
+
+        Only fires for bases not yet notified this session, so repeated refresh calls
+        don't spam the user.
+        """
         import tkinter.ttk as ttk
-        from tkinter import messagebox
-        keys_str = "\n".join(f"  {{{k}}}" for k in sorted(pending))
-        ans = messagebox.askquestion(
-            "同步目录未配置",
-            f"以下同步目录在全局配置中被使用，但本机尚未配置路径：\n\n"
-            + keys_str
-            + "\n\n是否立即配置？（选否则相关条目将在本次运行中被跳过）",
-            icon="warning",
-        )
-        if ans == "yes":
-            RegistrationWindow(self._root).show()
+        new_pending = mgr.get_pending_bases() - self._pending_bases_notified
+        if not new_pending:
+            return
+        self._pending_bases_notified |= new_pending
+
+        keys_str = "、".join(f"{{{k}}}" for k in sorted(new_pending))
+
+        dlg = tk.Toplevel(self._root)
+        dlg.title("发现未配置的同步目录")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+
+        outer = ttk.Frame(dlg, padding=20)
+        outer.pack(fill="both", expand=True)
+        ttk.Label(outer, text="云端配置中包含本机未配置的同步目录：",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        ttk.Label(outer, text=keys_str, foreground="#555555").pack(anchor="w", pady=(4, 12))
+        ttk.Label(outer,
+                  text="立即配置：填写本机路径后自动建立链接\n"
+                       "此机器不使用：相关条目将隐藏，不影响其他链接",
+                  foreground="gray", justify="left").pack(anchor="w", pady=(0, 16))
+
+        choice = tk.StringVar(value="later")
+
+        btn_row = ttk.Frame(outer)
+        btn_row.pack(fill="x")
+
+        def _choose(c):
+            choice.set(c)
+            dlg.destroy()
+
+        ttk.Button(btn_row, text="立即配置",
+                   command=lambda: _choose("config"), width=12).pack(side="left")
+        ttk.Button(btn_row, text="此机器不使用",
+                   command=lambda: _choose("ignore"), width=14).pack(side="left", padx=8)
+        ttk.Button(btn_row, text="稍后",
+                   command=lambda: _choose("later"),  width=8).pack(side="left")
+
+        center_window(dlg)
+        self._root.wait_window(dlg)
+
+        if choice.get() == "config":
+            RegistrationWindow(self._root, on_registered=self._on_new_bases_registered).show()
+        elif choice.get() == "ignore":
+            existing = mgr.get_machine_config_full() or {}
+            mgr.register_machine({**existing, **{k: None for k in new_pending}})
+            mgr.normalize_entries()
+            self._entries = mgr.check_all()
+            self._refresh_ui()
 
     def _on_relink_entry(self, entry_id: str):
         """Rebuild junction + confirm empty target for the given entry."""
-        ok = mgr.edit_entry(entry_id)
+        from tkinter import messagebox
+        force = False
+        entry = next((e for e in self._entries if e.id == entry_id), None)
+        if entry and entry.link.exists() and not entry.link.is_junction():
+            try:
+                non_empty = any(entry.link.iterdir())
+            except OSError:
+                non_empty = False
+            if non_empty:
+                if not messagebox.askyesno(
+                    "目录非空",
+                    f"链接路径已存在非空目录：\n{entry.link}\n\n删除其中所有内容并建立链接？",
+                    icon="warning", parent=self._root,
+                ):
+                    return
+                force = True
+        ok = mgr.edit_entry(entry_id, force_overwrite=force)
         mgr.normalize_entries()
         if ok:
             self._confirmed_empty.add(entry_id)
@@ -778,7 +850,6 @@ class App:
         self._entries = mgr.check_all()
         self._refresh_ui()
         if not ok:
-            from tkinter import messagebox
             messagebox.showerror("重连失败", f"「{entry_id}」junction 重建失败，请检查路径。")
 
     def _on_entry_saved(self, entry_id: str):

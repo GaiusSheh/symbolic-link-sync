@@ -69,7 +69,7 @@ class ScanWindow:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def show(self, managed_entries):
+    def show(self, managed_entries, scan_dir: str = ""):
         """Open (or raise) the scan window. managed_entries: list[LinkEntry]."""
         self._managed_entries = managed_entries
         if self._win and self._win.winfo_exists():
@@ -77,8 +77,12 @@ class ScanWindow:
             self._win.lift()
             self._win.focus_force()
             self._refresh_treeview()
+            if scan_dir:
+                self._dir_var.set(scan_dir)
             return
         self._build()
+        if scan_dir:
+            self._dir_var.set(scan_dir)
 
     # ── Build ─────────────────────────────────────────────────────────────────
 

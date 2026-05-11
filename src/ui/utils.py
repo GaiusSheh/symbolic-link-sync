@@ -1,8 +1,38 @@
 """Shared UI utilities."""
 
+import re
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+
+# Well-known cloud service folder names → suggested base key
+_CLOUD_BASE_NAMES: dict[str, str] = {
+    "onedrive":       "OneDrive",
+    "google drive":   "Google Drive",
+    "googledrive":    "Google Drive",
+    "dropbox":        "Dropbox",
+    "icloud drive":   "iCloud",
+    "iclouddrive":    "iCloud",
+    "icloud":         "iCloud",
+    "box sync":       "Box",
+    "box":            "Box",
+    "mega":           "MEGA",
+    "nextcloud":      "Nextcloud",
+    "pcloud drive":   "pCloud",
+}
+
+
+def suggest_base_name(path: str) -> str:
+    """Return a suggested base key for a given directory path."""
+    folder      = Path(path).name.strip()
+    folder_low  = folder.lower()
+    if folder_low in _CLOUD_BASE_NAMES:
+        return _CLOUD_BASE_NAMES[folder_low]
+    folder_nospace = folder_low.replace(" ", "")
+    if folder_nospace in _CLOUD_BASE_NAMES:
+        return _CLOUD_BASE_NAMES[folder_nospace]
+    # Fallback: use the original folder name as-is
+    return folder
 
 
 def center_window(win: tk.Toplevel | tk.Tk) -> None:
@@ -82,12 +112,14 @@ def build_base_row(
     path_entry = ttk.Entry(row_frame, textvariable=path_var, width=path_width)
     path_entry.pack(side="left", padx=(0, 4))
 
-    def browse(pv=path_var):
+    def browse(pv=path_var, nv=name_var):
         cur  = pv.get()
         init = cur if cur and Path(cur).is_dir() else str(Path.home())
         p = filedialog.askdirectory(parent=parent_win, title="选择同步目录根路径", initialdir=init)
         if p:
             pv.set(p)
+            if not nv.get():
+                nv.set(suggest_base_name(p))
 
     browse_btn = ttk.Button(row_frame, text=browse_text, command=browse, width=len(browse_text) + 2)
     browse_btn.pack(side="left", padx=(0, 4))

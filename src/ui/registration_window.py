@@ -3,6 +3,7 @@
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from typing import Callable
 
 from core import symlink_manager as mgr
 from ui.utils import apply_base_registration, build_base_row
@@ -11,10 +12,12 @@ from ui.utils import apply_base_registration, build_base_row
 class RegistrationWindow:
     """Modal dialog to register (or re-configure) base paths for the current machine."""
 
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk,
+                 on_registered: Callable[[list[str]], None] | None = None):
         self._root = root
         self._win: tk.Toplevel | None = None
         self._rows: list[dict] = []   # [{name_var, path_var, frame}, ...]
+        self._on_registered = on_registered
 
     # ── Public ────────────────────────────────────────────────────────────────
 
@@ -57,7 +60,12 @@ class RegistrationWindow:
         # Load existing config or auto-detect
         existing_full = mgr.get_machine_config_full() or {}
         detected = mgr.detect_sync_services() if not existing_full else {}
-        init_bases = existing_full if existing_full else detected
+        init_bases = dict(existing_full if existing_full else detected)
+
+        # Include bases used globally but not yet configured on this machine
+        for k in mgr.get_pending_bases():
+            if k not in init_bases:
+                init_bases[k] = ""  # empty path, not ignored — user needs to fill in
 
         self._rows = []
         if init_bases:
@@ -122,10 +130,16 @@ class RegistrationWindow:
             messagebox.showwarning("至少一条", "请至少填写一条同步目录配置。", parent=self._win)
             return
 
+        old_bases = set((mgr.get_machine_config() or {}).values())
         if not apply_base_registration(self._win, bases, "此机器不使用"):
             return
         self._registered = True
         self._win.destroy()
+        if self._on_registered:
+            new_paths = [p for p in bases.values()
+                         if p and p not in old_bases]
+            if new_paths:
+                self._on_registered(new_paths)
 
     def _on_skip(self):
         self._registered = False

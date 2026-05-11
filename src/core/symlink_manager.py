@@ -160,10 +160,6 @@ def normalize_entries() -> tuple[int, int]:
         if not _is_global(link_j, target_j):
             kept_scanned.append(scan_raw)
             continue
-        keys = set(re.findall(r"\{(\w+)\}", link_j + target_j))
-        if not _all_machines_have_keys(cfg, keys):
-            kept_scanned.append(scan_raw)
-            continue
         # Build a unique ID from the link filename
         base_id  = Path(link_j).name
         entry_id = base_id
@@ -824,9 +820,13 @@ def create_entry(entry_id: str, description: str, link: Path, target: Path,
 
     # ── Create junction ───────────────────────────────────────────────────────
     if target.exists():
-        ok, err = _create_junction(link, target)
-        if not ok:
-            return False, f"配置已保存，但创建 Junction 失败：{err or '未知错误'}"
+        try:
+            ok, err = _create_junction(link, target)
+            if not ok:
+                return True, f"配置已保存，但创建 Junction 失败：{err or '未知错误'}"
+        except Exception as exc:
+            # JSON is already saved; junction will be retried on next sync
+            return True, f"配置已保存，但创建 Junction 时发生错误：{exc}"
 
     return True, ""
 
