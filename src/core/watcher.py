@@ -19,7 +19,7 @@ _FILE_ACTION_RENAMED_NEW_NAME = 5
 
 logger = logging.getLogger(__name__)
 
-from core.paths import SYMLINKS_JSON as _JSON_PATH
+from core.paths import get_symlinks_json as _get_json_path
 
 
 class _JsonHandler(FileSystemEventHandler):
@@ -30,7 +30,7 @@ class _JsonHandler(FileSystemEventHandler):
         self._lock = threading.Lock()
 
     def on_modified(self, event):
-        if Path(event.src_path).resolve() != _JSON_PATH.resolve():
+        if Path(event.src_path).resolve() != _get_json_path().resolve():
             return
         with self._lock:
             if self._debounce:
@@ -200,10 +200,10 @@ class BackgroundWatcher:
 
         handler = _JsonHandler(self._q)
         self._observer = Observer()
-        self._observer.schedule(handler, str(_JSON_PATH.parent), recursive=False)
+        self._observer.schedule(handler, str(_get_json_path().parent), recursive=False)
         self._observer.daemon = True
         self._observer.start()
-        logger.info("Watching %s", _JSON_PATH)
+        logger.info("Watching %s", _get_json_path())
 
         self._schedule_check()
 

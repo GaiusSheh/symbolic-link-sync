@@ -11,7 +11,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
-from core.paths import SYMLINKS_JSON as _JSON_PATH
+from core.paths import get_symlinks_json as _get_json_path
 
 # Sentinel returned by create_entry when the link path is a non-empty directory,
 # so the caller (UI) can ask the user for confirmation before retrying with force=True.
@@ -48,15 +48,15 @@ class SyncResult:
 
 def _load_raw() -> dict:
     try:
-        with open(_JSON_PATH, encoding="utf-8-sig") as f:
+        with open(_get_json_path(), encoding="utf-8-sig") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
 def _save_raw(cfg: dict) -> None:
-    _JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(_JSON_PATH, "w", encoding="utf-8") as f:
+    _get_json_path().parent.mkdir(parents=True, exist_ok=True)
+    with open(_get_json_path(), "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=4, ensure_ascii=False)
 
 

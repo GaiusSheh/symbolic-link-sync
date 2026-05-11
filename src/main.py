@@ -27,7 +27,8 @@ from core import symlink_manager as mgr
 from ui.icons import app_icon
 from ui.utils import center_window
 
-from core.paths import STATE_JSON as _STATE_PATH, LOG_PATH as _LOG_PATH_IMPORT
+from core.paths import (STATE_JSON as _STATE_PATH, LOG_PATH as _LOG_PATH_IMPORT,
+                        SYMLINKS_JSON, set_symlinks_json)
 
 
 def _load_confirmed_empty() -> set[str]:
@@ -77,6 +78,20 @@ class App:
 
         self._root = tk.Tk()
         self._root.withdraw()
+
+        # ── Resolve symlinks.json path (wizard on first run) ─────────────────
+        self._first_run_wizard = False
+        if not self._settings.symlinks_path:
+            from ui.setup_wizard import SetupWizard
+            chosen = SetupWizard(self._root).show_modal()
+            if chosen:
+                self._settings.symlinks_path = str(chosen)
+                sm.save(self._settings)
+                self._first_run_wizard = True
+        set_symlinks_json(
+            Path(self._settings.symlinks_path) if self._settings.symlinks_path
+            else SYMLINKS_JSON
+        )
         self._root.title("Sym-Link")
         try:
             # Give the process its own taskbar identity (separates from python.exe)
@@ -137,6 +152,10 @@ class App:
         # Prompt registration if machine not yet configured
         if not mgr.is_registered():
             RegistrationWindow(self._root).show_modal()
+
+        # After first-run wizard: warn if symlinks.json is outside all bases
+        if self._first_run_wizard:
+            self._check_symlinks_location()
 
         # Warn about bases used globally but not yet handled on this machine
         self._root.after(200, self._check_pending_bases)
@@ -713,6 +732,24 @@ class App:
 
     def _do_manage_bases(self):
         RegistrationWindow(self._root).show()
+
+    def _check_symlinks_location(self):
+        """Warn if symlinks.json is not under any registered base (sync may not work)."""
+        from core.paths import get_symlinks_json
+        from tkinter import messagebox
+        json_path = get_symlinks_json()
+        bases = mgr.get_machine_config() or {}
+        base_paths = [v.replace("/", "\\").rstrip("\\").lower()
+                      for v in bases.values() if v]
+        path_str = str(json_path).replace("/", "\\").lower()
+        if base_paths and not any(path_str.startswith(b) for b in base_paths):
+            messagebox.showwarning(
+                "配置文件不在同步目录内",
+                f"当前配置文件：\n{json_path}\n\n"
+                "该位置不在任何已注册的同步目录之下。\n"
+                "如果该目录通过网盘同步，可忽略此提示；\n"
+                "否则配置文件将无法在其他设备上使用。",
+            )
 
     def _check_pending_bases(self):
         """Show a warning if global symlinks use bases not yet handled on this machine."""

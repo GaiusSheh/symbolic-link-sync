@@ -22,7 +22,7 @@ _STATUS_LABEL = {
     Status.MISSING: "⚠️ 缺失",
 }
 
-from core.paths import SYMLINKS_JSON as _JSON_PATH
+from core.paths import get_symlinks_json as _get_json_path
 
 
 
@@ -232,7 +232,7 @@ class StatusWindow:
             self._on_manage_bases()
 
     def _open_json(self):
-        os.startfile(str(_JSON_PATH))
+        os.startfile(str(_get_json_path()))
 
     def _on_double_click(self, event):
         item = self._tree.identify_row(event.y)

@@ -16,6 +16,7 @@ class Settings:
     check_interval_minutes: int = 10
     autostart: bool = False
     close_to_tray: bool = True
+    symlinks_path: str = ""   # empty = not yet configured; first-run wizard shown on startup
 
 
 def load() -> Settings:
@@ -28,6 +29,7 @@ def load() -> Settings:
             check_interval_minutes=int(data.get("check_interval_minutes", 10)),
             autostart=bool(data.get("autostart", False)),
             close_to_tray=bool(data.get("close_to_tray", True)),
+            symlinks_path=str(data.get("symlinks_path", "")),
         )
     except Exception:
         return Settings()
