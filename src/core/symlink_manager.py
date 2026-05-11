@@ -47,11 +47,15 @@ class SyncResult:
 # ── JSON I/O ──────────────────────────────────────────────────────────────────
 
 def _load_raw() -> dict:
-    with open(_JSON_PATH, encoding="utf-8-sig") as f:
-        return json.load(f)
+    try:
+        with open(_JSON_PATH, encoding="utf-8-sig") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 def _save_raw(cfg: dict) -> None:
+    _JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=4, ensure_ascii=False)
 

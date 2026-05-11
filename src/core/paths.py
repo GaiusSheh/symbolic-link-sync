@@ -26,4 +26,4 @@ STATE_JSON    = DATA_DIR / "state.json"
 LOG_PATH      = _root() / "symlink-gui.log"
 
 # Ensure data/ exists at import time (safe to call repeatedly)
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
