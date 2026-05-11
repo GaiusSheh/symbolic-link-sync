@@ -242,6 +242,10 @@ class ScanWindow:
         disp_depth  = self._disp_var.get()
         max_pairs   = self._maxpair_var.get()
 
+        # Cache for real-time row insertion in _poll_sq
+        self._scan_bases     = bases
+        self._scan_max_pairs = max_pairs
+
         t = threading.Thread(
             target=self._scan_worker,
             args=(root_str, max_depth, disp_depth, max_pairs, managed, ignored, bases),
@@ -291,14 +295,16 @@ class ScanWindow:
                         self._sq.put(("count", "ignored"))
                     else:
                         self._sq.put(("count", "unmanaged"))
-                        results.append({
+                        entry = {
                             "link":       link_str,
                             "target":     target_str,
                             "scanned_at": datetime.now().isoformat(timespec="seconds"),
                             "mtime":      datetime.fromtimestamp(mtime).isoformat(timespec="seconds") if mtime else "",
                             "mtime_ts":   mtime,
                             "ignored":    False,
-                        })
+                        }
+                        results.append(entry)
+                        self._sq.put(("result", entry))   # real-time display
 
                 # Prune after junction check so junctions at max_depth are not missed
                 if max_depth > 0 and cur_depth >= max_depth:
@@ -320,6 +326,8 @@ class ScanWindow:
                     idx = {"unmanaged": 0, "managed": 1, "ignored": 2}[msg[1]]
                     self._counters[idx] += 1
                     self._update_counters()
+                elif kind == "result":
+                    self._append_result_row(msg[1])
                 elif kind == "done":
                     self._on_scan_done(msg[1], msg[2])
                     return
@@ -346,7 +354,6 @@ class ScanWindow:
             summary += f" — 仅显示最近 {len(display_results)} 条，其余请查阅 JSON"
         self._prog_var.set(f"扫描完成　{summary}")
         self._summary_var.set("")
-        self._populate_results(display_results)
 
         # Handle base registration / re-base after scan
         self._win.after(200, self._post_scan_base_dialog)
@@ -416,6 +423,18 @@ class ScanWindow:
         self._prog_var.set(f"扫描出错：{msg}")
 
     # ── Results ───────────────────────────────────────────────────────────────
+
+    def _append_result_row(self, entry: dict):
+        """Insert one result row into the tree during scanning (real-time display)."""
+        if len(self._tree.get_children()) >= self._scan_max_pairs:
+            return
+        bases       = self._scan_bases
+        link_disp   = _shorten_multi(entry["link"], bases)
+        target_disp = _shorten_multi(entry["target"], bases)
+        mtime_disp  = entry.get("mtime", "")[:16].replace("T", " ")
+        self._tree.insert("", "end",
+                          iid=iid_escape(entry["link"]) + "||" + iid_escape(entry["target"]),
+                          values=(mtime_disp, link_disp, target_disp))
 
     def _populate_results(self, results):
         tree = self._tree
