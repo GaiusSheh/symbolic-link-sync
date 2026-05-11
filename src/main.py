@@ -96,7 +96,7 @@ class App:
         try:
             # Give the process its own taskbar identity (separates from python.exe)
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-                "YuanFeng.SymLiSync"
+                "SymLiSync"
             )
             # iconphoto with high-res PNG — must be LAST icon call (iconbitmap overwrites it)
             from PIL import ImageTk
