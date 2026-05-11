@@ -293,6 +293,9 @@ class App:
             ids = ", ".join(result.broken)
             send_toast(title=f"SymLiSync:{len(result.broken)} 个断链", body=ids)
 
+        if reason == "startup":
+            self._do_open_window()
+
     def _do_repath(self, old_path: str, new_path: str):
         logging.info("Dir moved: %s → %s", old_path, new_path)
         updated, failed = mgr.repath_entries(old_path, new_path)

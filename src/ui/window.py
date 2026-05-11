@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa: F401
                                    create_entry, delete_entry, edit_entry,
                                    get_scanned, get_machine_config,
-                                   get_other_machines_local_entries)
+                                   get_other_machines_local_entries,
+                                   get_ignored_entries)
 from ui.utils import center_window, center_on_parent, iid_escape, iid_unescape, shorten_path
 
 _STATUS_LABEL = {
@@ -46,6 +47,12 @@ class StatusWindow:
         self._tree: ttk.Treeview | None = None
         self._entries: list[LinkEntry] = []
         self._close_handler: Callable = self.hide
+        self._collapsed: dict[str, bool] = {
+            "ignored": True,
+            "local":   False,
+            "scan":    False,
+            "offline": False,
+        }
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -127,9 +134,11 @@ class StatusWindow:
         tree.tag_configure("pending",        background="#FFF9C4")  # yellow
         tree.tag_configure("ok_empty",       background="#FFF3E0")  # amber
         tree.tag_configure("unmanaged_scan",  background="#FFF9C4")
-        tree.tag_configure("separator",       background="#ECEFF1", foreground="#90A4AE")
+        tree.tag_configure("separator",       background="#ECEFF1", foreground="#546E7A",
+                           font=("Segoe UI", 9, "bold"))
         tree.tag_configure("offline_pending", background="#F3E5F5")
         tree.tag_configure("offline_done",    background="#E8EAF6")
+        tree.tag_configure("ignored_entry",   background="#FAFAFA", foreground="#BDBDBD")
 
         ttk.Label(win, text="双击任意行可编辑", foreground="gray").grid(
             row=1, column=0, columnspan=2, sticky="w", padx=10)
@@ -147,6 +156,7 @@ class StatusWindow:
         win.columnconfigure(0, weight=1)
         win.rowconfigure(0, weight=1)
 
+        tree.bind("<Button-1>",  self._on_left_click)
         tree.bind("<Double-1>",  self._on_double_click)
         tree.bind("<Button-3>",  self._on_right_click)
         tree.bind("<Delete>",    self._on_delete_key)
@@ -160,7 +170,6 @@ class StatusWindow:
             tree.delete(row)
         od = _get_bases()
 
-        # ── Managed entries ───────────────────────────────────────────────────
         global_entries = [e for e in entries if not e.machine_specific]
         local_entries  = [e for e in entries if e.machine_specific]
 
@@ -177,51 +186,82 @@ class StatusWindow:
                                 _shorten(str(e.target), od)),
                         tags=(tag,))
 
+        def _sep(iid: str, key: str, label: str, count: int):
+            arrow = "▶" if self._collapsed.get(key, False) else "▼"
+            tree.insert("", "end", iid=iid,
+                        values=(f"  {arrow}  {label}  ({count})", "", "", "", ""),
+                        tags=("separator",))
+
+        # ── 全局条目 ──────────────────────────────────────────────────────────
         for e in global_entries:
             _insert_entry(e)
 
-        if local_entries:
-            tree.insert("", "end", iid="__local_sep__",
-                        values=("── 本机管理 ──", "", "", "", ""),
-                        tags=("separator",))
-            for e in local_entries:
-                _insert_entry(e)
+        # ── 已忽略的全局配置（默认折叠）──────────────────────────────────────
+        ignored_raws = get_ignored_entries()
+        if ignored_raws:
+            _sep("__ignored_sep__", "ignored", "已忽略的全局配置", len(ignored_raws))
+            if not self._collapsed.get("ignored", True):
+                for raw in ignored_raws:
+                    iid = "ignored::" + raw["id"]
+                    tree.insert("", "end", iid=iid,
+                                values=("—", raw["id"], raw.get("description", ""),
+                                        _shorten(raw.get("link", ""), od),
+                                        _shorten(raw.get("target", ""), od)),
+                                tags=("ignored_entry",))
 
-        # ── Unmanaged scanned entries ─────────────────────────────────────────
+        # ── 本机管理 ──────────────────────────────────────────────────────────
+        if local_entries:
+            _sep("__local_sep__", "local", "本机管理", len(local_entries))
+            if not self._collapsed.get("local", False):
+                for e in local_entries:
+                    _insert_entry(e)
+
+        # ── 未管理的扫描结果 ──────────────────────────────────────────────────
         managed_links = {str(e.link).lower() for e in entries}
         scanned = [s for s in get_scanned()
                    if not s.get("ignored")
                    and _resolve_link(s["link"], od).lower() not in managed_links]
 
         if scanned:
-            tree.insert("", "end", iid="__scan_sep__",
-                        values=("── 未管理的扫描结果 ──", "", "", "", ""),
-                        tags=("separator",))
-            for s in scanned:
-                # Escape Tcl metacharacters { } which cause TclError in some tk versions
-                iid = "scan::" + iid_escape(s["link"]) + "||" + iid_escape(s["target"])
-                tree.insert("", "end", iid=iid,
-                            values=("🔍 未管理", s["link"].split("/")[-1],
-                                    "",
-                                    _shorten(s["link"], od),
-                                    _shorten(s["target"], od)),
-                            tags=("unmanaged_scan",))
+            _sep("__scan_sep__", "scan", "未管理的扫描结果", len(scanned))
+            if not self._collapsed.get("scan", False):
+                for s in scanned:
+                    iid = "scan::" + iid_escape(s["link"]) + "||" + iid_escape(s["target"])
+                    tree.insert("", "end", iid=iid,
+                                values=("🔍 未管理", s["link"].split("/")[-1],
+                                        "",
+                                        _shorten(s["link"], od),
+                                        _shorten(s["target"], od)),
+                                tags=("unmanaged_scan",))
 
-        # ── Offline-configured entries (other machines' local symlinks) ──────────
+        # ── 离线配置 ──────────────────────────────────────────────────────────
         my_ids  = {e.id for e in entries}
         other   = get_other_machines_local_entries()
         pending = {eid: ml for eid, ml in other.items() if eid not in my_ids}
         if pending:
-            tree.insert("", "end", iid="__offline_sep__",
-                        values=("── 离线配置 ──", "", "", "", ""),
-                        tags=("separator",))
-            for eid, machine_entries in sorted(pending.items()):
-                machines_str = "、".join(e["_machine"] for e in machine_entries)
-                tree.insert("", "end", iid=f"offline::{eid}",
-                            values=("□ 待配置", eid, machines_str, "", ""),
-                            tags=("offline_pending",))
+            _sep("__offline_sep__", "offline", "离线配置", len(pending))
+            if not self._collapsed.get("offline", False):
+                for eid, machine_entries in sorted(pending.items()):
+                    machines_str = "、".join(e["_machine"] for e in machine_entries)
+                    tree.insert("", "end", iid=f"offline::{eid}",
+                                values=("□ 待配置", eid, machines_str, "", ""),
+                                tags=("offline_pending",))
 
     # ── Actions ──────────────────────────────────────────────────────────────
+
+    def _on_left_click(self, event):
+        item = self._tree.identify_row(event.y)
+        sep_map = {
+            "__ignored_sep__": "ignored",
+            "__local_sep__":   "local",
+            "__scan_sep__":    "scan",
+            "__offline_sep__": "offline",
+        }
+        if item in sep_map:
+            key = sep_map[item]
+            self._collapsed[key] = not self._collapsed.get(key, False)
+            self._populate(self._entries)
+            return "break"
 
     def _open_scan(self):
         if self._on_open_scan:
@@ -236,7 +276,8 @@ class StatusWindow:
 
     def _on_double_click(self, event):
         item = self._tree.identify_row(event.y)
-        if not item or item in ("__scan_sep__", "__offline_sep__", "__local_sep__"):
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
+        if not item or item in _seps or item.startswith("ignored::"):
             return
         if item.startswith("scan::"):
             self._open_import_dialog(item)
@@ -250,18 +291,21 @@ class StatusWindow:
 
     def _on_right_click(self, event):
         item = self._tree.identify_row(event.y)
-        if not item or item in ("__scan_sep__", "__offline_sep__", "__local_sep__"):
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
+        if not item or item in _seps or item.startswith("ignored::"):
             return
 
         # If right-clicked outside current selection, move selection to this item
         if item not in self._tree.selection():
             self._tree.selection_set(item)
 
-        # Collect all selected managed entries (skip separators, scan::, offline::)
-        _sep = {"__scan_sep__", "__offline_sep__", "__local_sep__"}
+        # Collect all selected managed entries (skip separators, scan::, offline::, ignored::)
         selected_ids = [
             iid for iid in self._tree.selection()
-            if iid not in _sep and not iid.startswith("scan::") and not iid.startswith("offline::")
+            if iid not in _seps
+            and not iid.startswith("scan::")
+            and not iid.startswith("offline::")
+            and not iid.startswith("ignored::")
         ]
         selected_entries = [e for e in self._entries if e.id in set(selected_ids)]
 
@@ -527,10 +571,10 @@ class StatusWindow:
         self._on_refresh_needed()
 
     def _on_delete_key(self, _event):
-        _sep = {"__scan_sep__", "__offline_sep__", "__local_sep__"}
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
         selected_entries = [
             e for e in self._entries
-            if e.id in self._tree.selection() and e.id not in _sep
+            if e.id in self._tree.selection() and e.id not in _seps
         ]
         if not selected_entries:
             return

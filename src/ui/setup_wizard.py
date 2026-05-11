@@ -119,7 +119,22 @@ class SetupWizard:
                                        f"目录不存在：\n{chosen_dir}",
                                        parent=self._win)
                 return
-            self._result = chosen_dir / "symlinks.json"
+            target = chosen_dir / "symlinks.json"
+            if target.exists():
+                ans = messagebox.askyesnocancel(
+                    "已有配置文件",
+                    f"该目录下已存在配置文件：\n{target}\n\n"
+                    "「是」— 继承现有配置（等同于「使用已有配置」）\n"
+                    "「否」— 清空并重新开始\n"
+                    "「取消」— 返回重新选择",
+                    icon="warning", parent=self._win,
+                )
+                if ans is None:
+                    return
+                if ans is False:
+                    import json
+                    target.write_text(json.dumps({}), encoding="utf-8")
+            self._result = target
         else:
             chosen_file = Path(raw)
             if not chosen_file.is_file():

@@ -707,13 +707,43 @@ def check_all() -> list[LinkEntry]:
     return entries
 
 
+def get_ignored_entries() -> list[dict]:
+    """Return global symlink entries whose required bases are ignored on this machine."""
+    full_config = get_machine_config_full()
+    if full_config is None:
+        return []
+    ignored_keys = {k for k, v in full_config.items() if v is None}
+    if not ignored_keys:
+        return []
+    cfg = _load_raw()
+    result = []
+    for raw in cfg.get("symlinks", []):
+        required = set(re.findall(r"\{(\w+)\}", raw["link"] + raw.get("target", "")))
+        if required & ignored_keys:
+            result.append(raw)
+    return result
+
+
 def sync_all() -> SyncResult:
     result = SyncResult()
     for entry in check_all():
         if entry.status == Status.OK:
             result.skipped.append(entry.id)
         elif entry.status == Status.BROKEN:
-            result.broken.append(entry.id)
+            if entry.target.exists():
+                # Target is reachable per config; rebuild the broken junction.
+                if os.path.lexists(entry.link):
+                    ok_rm, _ = _remove_link(entry.link)
+                    if not ok_rm:
+                        result.failed.append(entry.id)
+                        continue
+                ok, _ = _create_junction(entry.link, entry.target)
+                if ok:
+                    result.created.append(entry.id)
+                else:
+                    result.failed.append(entry.id)
+            else:
+                result.broken.append(entry.id)
         elif entry.status == Status.MISSING:
             result.skipped.append(entry.id)
         elif entry.status == Status.PENDING:
@@ -889,6 +919,10 @@ def edit_entry(entry_id: str,
     for entry in check_all():
         if entry.id == effective_id:
             if not entry.target.exists():
+                # New target doesn't exist yet; remove stale junction so status
+                # shows MISSING rather than a misleading OK pointing to old target.
+                if target_changed and os.path.lexists(entry.link):
+                    _remove_link(entry.link)
                 return True
             # Remove existing path if force-overwrite requested
             if force_overwrite and entry.link.exists():
@@ -901,8 +935,8 @@ def edit_entry(entry_id: str,
                           entry.link, r.returncode, _decode(r.stderr))
                 if r.returncode != 0:
                     return False
-            # Always rebuild if junction is missing or broken
-            if not entry.link.is_junction() or not entry.link.exists():
+            # Rebuild if junction is missing, broken, or target was changed
+            if target_changed or not entry.link.is_junction() or not entry.link.exists():
                 if os.path.lexists(entry.link):   # lexists catches broken junctions
                     ok_rm, err_rm = _remove_link(entry.link)
                     _log.info("remove_link %s → ok=%s  err=%r", entry.link, ok_rm, err_rm)
