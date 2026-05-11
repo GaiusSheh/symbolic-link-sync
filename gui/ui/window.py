@@ -545,7 +545,7 @@ class StatusWindow:
                           id_val="", desc_val="", target_val="", link_val="",
                           id_readonly=False):
         """Build the shared form for edit and new-entry dialogs.
-        Returns (id_var, desc_text, target_var, link_var)."""
+        Returns (outer, id_var, desc_text, target_var, link_var)."""
         outer = ttk.Frame(dlg, padding=16)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(1, weight=1)
