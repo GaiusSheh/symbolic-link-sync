@@ -613,26 +613,11 @@ class StatusWindow:
         desc_text.insert("1.0", desc_val)
         desc_text.grid(row=1, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # 目标路径
-        lbl("目标路径", 2)
-        target_var = tk.StringVar(value=target_val)
-        ttk.Entry(outer, textvariable=target_var, width=34).grid(
-            row=2, column=1, sticky="ew", pady=4)
-
-        def browse_target():
-            init = str(Path(target_var.get()).parent) if target_var.get() else "/"
-            p = filedialog.askdirectory(parent=dlg, title="选择目标目录", initialdir=init)
-            if p:
-                target_var.set(p)
-
-        ttk.Button(outer, text="浏览...", command=browse_target).grid(
-            row=2, column=2, padx=(6, 0), pady=4)
-
         # 链接路径
-        lbl("链接路径", 3)
+        lbl("链接路径", 2)
         link_var = tk.StringVar(value=link_val)
         ttk.Entry(outer, textvariable=link_var, width=34).grid(
-            row=3, column=1, sticky="ew", pady=4)
+            row=2, column=1, sticky="ew", pady=4)
 
         def browse_link():
             cur = link_var.get()
@@ -642,6 +627,21 @@ class StatusWindow:
                 link_var.set(p)
 
         ttk.Button(outer, text="浏览...", command=browse_link).grid(
+            row=2, column=2, padx=(6, 0), pady=4)
+
+        # 目标路径
+        lbl("目标路径", 3)
+        target_var = tk.StringVar(value=target_val)
+        ttk.Entry(outer, textvariable=target_var, width=34).grid(
+            row=3, column=1, sticky="ew", pady=4)
+
+        def browse_target():
+            init = str(Path(target_var.get()).parent) if target_var.get() else "/"
+            p = filedialog.askdirectory(parent=dlg, title="选择目标目录", initialdir=init)
+            if p:
+                target_var.set(p)
+
+        ttk.Button(outer, text="浏览...", command=browse_target).grid(
             row=3, column=2, padx=(6, 0), pady=4)
 
         return outer, id_var, desc_text, target_var, link_var

@@ -310,7 +310,6 @@ class App:
         if failed:
             msg += f"，{len(failed)} 项 junction 重建失败"
         send_toast("SymLiSync:已自动更新路径", msg)
-        show_banner(self._root, "SymLiSync:已自动更新路径", msg)
         logging.info("Repath done: %d updated, %d failed", len(updated), len(failed))
 
     def _do_open_window(self):
@@ -382,7 +381,6 @@ class App:
                         if failed:
                             msg += f"，{len(failed)} 项 junction 重建失败"
                         send_toast("SymLiSync:已自动更新路径", msg)
-                        show_banner(self._root, "SymLiSync:已自动更新路径", msg)
                 else:
                     # Check if the junction itself moved between watched base dirs
                     new_link = self._find_moved_junction(entry)
@@ -391,7 +389,6 @@ class App:
                         mgr.edit_entry(entry.id, new_link=new_link)
                         msg = f"{entry.id}: {entry.link.parent.name} → {new_link.parent.name}"
                         send_toast("SymLiSync:已自动更新", msg)
-                        show_banner(self._root, "SymLiSync:已自动更新", msg)
                         self._entries = mgr.check_all()
                         continue  # process remaining entries; stale prev is harmless here
                     else:
@@ -436,7 +433,6 @@ class App:
                     mgr.rename_link_in_json(entry.id, new_path)
                     msg = f"{entry.id}: {entry.link.name} → {new_path.name}"
                     send_toast("SymLiSync:已自动更新", msg)
-                    show_banner(self._root, "SymLiSync:已自动更新", msg)
                     self._entries = mgr.check_all()
                     logging.info("Rename detected: %s → %s", entry.link, new_path)
                     continue
@@ -638,7 +634,6 @@ class App:
             mgr.normalize_entries()
             msg = f"{entry.id}: {entry.link.name} → {new_dir.name}"
             send_toast("SymLiSync:已自动修复 Explorer 移动", msg)
-            show_banner(self._root, "SymLiSync:已自动修复 Explorer 移动", msg)
             logging.info("Explorer link recovery done: %s → %s", entry.link, new_dir)
 
         except Exception as exc:
