@@ -11,7 +11,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
-_JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
+from core.paths import SYMLINKS_JSON as _JSON_PATH
 
 # Sentinel returned by create_entry when the link path is a non-empty directory,
 # so the caller (UI) can ask the user for confirmation before retrying with force=True.

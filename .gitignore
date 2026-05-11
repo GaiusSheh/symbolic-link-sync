@@ -2,19 +2,17 @@
 watcher.log
 scan_result.txt
 
-# Python GUI build artifacts
-gui/dist/
-gui/build/
-gui/__pycache__/
-gui/core/__pycache__/
-gui/ui/__pycache__/
-gui/*.spec
+# Python build artifacts
+dist/
+build/
+src/__pycache__/
+src/core/__pycache__/
+src/ui/__pycache__/
+src/*.spec
 
 # Runtime state / logs
-gui/symlink-gui.log
-gui/symlink-gui.log.*
-gui/settings.json
-gui/state.json
+symlink-gui.log
+symlink-gui.log.*
 
-# User data (changes with use, not part of source)
-symlinks.json
+# User data — all in data/ (changes with use, not part of source)
+data/

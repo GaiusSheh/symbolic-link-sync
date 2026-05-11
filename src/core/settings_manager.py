@@ -6,7 +6,7 @@ import winreg
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-_SETTINGS_PATH = Path(__file__).parent.parent / "settings.json"
+from core.paths import SETTINGS_JSON as _SETTINGS_PATH
 _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 _APP_NAME = "SymLinkGUI"
 

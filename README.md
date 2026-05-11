@@ -1,106 +1,141 @@
-﻿# Sym-Link
+# Sym-Link GUI
 
-OneDrive does not sync symbolic links or junctions. This tool maintains a JSON database of all known symlinks and a background watcher that rebuilds them automatically on every machine.
+Windows Junction 管理工具。OneDrive 不会同步 Junction（目录符号链接），该工具在每台机器上后台运行，自动维护 `symlinks.json` 中定义的全部 Junction，并在链接失效时自动检测和修复。
 
-## Files
+---
 
-| File | Purpose |
-|---|---|
-| `symlinks.json` | Source of truth — all symlink definitions and machine OneDrive paths |
-| `sync_symlinks.ps1` | Reads the JSON and rebuilds all junctions on the current machine |
-| `watch_symlinks.ps1` | Background process: watches for JSON changes and runs periodic broken-link checks |
-| `setup.ps1` | One-time install: registers the watcher as a login-triggered scheduled task |
-| `scan_symlinks.ps1` | Utility: scans OneDrive for existing junctions and .lnk shortcuts |
-| `watcher.log` | Auto-generated log of all sync activity |
+## 核心概念
 
-## First-time setup on a new machine
+### Base 路径
 
-1. Add the machine to `symlinks.json` under `machines`:
-```json
-"machines": {
-    "MY-PC": {
-        "onedrive": "C:/Users/Username/OneDrive"
-    }
-}
+Junction 的路径在不同机器上根目录不同（如 OneDrive 在 A 机是 `C:\Users\Alice\OneDrive`，在 B 机是 `D:\OneDrive`）。Sym-Link 使用模板变量解决这个问题：
+
+```
+链接路径：{onedrive}/Codes/my-project/data-link
+目标路径：{onedrive}/files/data
 ```
 
-2. Run `setup.ps1` as Administrator (once only):
-```powershell
-powershell -ExecutionPolicy Bypass -File "...\Sym-Link\setup.ps1"
-```
+`{onedrive}` 叫做 **Base**，每台机器在注册时填写自己对应的真实路径。可以定义多个 Base（如 `{gdrive}`、`{work}` 等），每个 Base 对应一个根目录。首次运行时会弹出注册窗口，之后可在「管理同步目录」中增删或修改。
 
-This registers a scheduled task (`SymLinkWatcher`) that starts the watcher silently at every login.
+**Rebase**：扫描链接时，如果所选目录是某个已注册 Base 的**父目录**，程序会提示是否 Rebase。例如现有 `{onedrive} = C:\Users\Alice\OneDrive`，扫描 `C:\Users\Alice` 时检测到这层关系，可将 `C:\Users\Alice` 注册为新 Base `{home}`，并把所有 `{onedrive}/X` 自动替换为 `{home}/OneDrive/X`。这样将来 OneDrive 目录整体迁移时只需更新 `{home}` 的路径即可。
 
-## How it works
+**跨机器注意**：Rebase 只更新当前机器的配置。其他机器拉取到更新后，需在「管理同步目录」中为新 Base 填写本机对应路径，否则相关链接在其他机器上会变为离线或缺失状态。
 
-- **On login**: watcher starts and runs an initial sync
-- **When `symlinks.json` changes**: sync runs immediately (debounced 2s for OneDrive write delay)
-- **Every 10 minutes**: sync runs to detect broken junctions and fire a Windows toast notification if any are found
+---
 
-## Adding a new symlink
+### 链接状态
 
-Edit `symlinks.json` and add an entry:
+| 图标 | 状态 | 含义 |
+|------|------|------|
+| ✅ 正常 | OK | Junction 存在且 Target 可达 |
+| ➕ 待建 | PENDING | Target 存在但 Junction 尚未建立 |
+| ❌ 断链 | BROKEN | Junction 存在但 Target 不可达 |
+| ⚠️ 缺失 | MISSING | Junction 和 Target 均不存在（可能未同步） |
+| ⚠️ 空目标 | — | Target 存在但目录为空（见下节） |
+
+「立即同步」会为所有「待建」条目创建 Junction，并报告断链数量。程序也按设置的时间间隔自动检测。
+
+---
+
+### 空目标警告
+
+**静态黄色提示**：Target 目录存在但为空时，列表中显示 ⚠️ 空目标，**不弹窗**。常见于新建链接还没放内容，或者链接被剪切走但程序没能自动追踪到新位置。处理方式：
+
+- 打开编辑对话框点「确定」→ 标记为正常（认可当前为空的状态）
+- 右键 → 「（重新）链接 / 确认」→ 同上
+- 若知道内容去了哪里，编辑条目更新 Target 路径
+
+**弹窗警告**：程序运行期间检测到 Target **从有内容变为空**时（OK → 空目标转变），会弹出对话框，提示可能是 Junction 被移动到了未监听的位置，提供三个选项：「确认（目标为空）」/ 「立即修改」 / 「稍后处理」。
+
+---
+
+### 四种链接分区
+
+状态窗口中的链接分为四个区域：
+
+**全局链接**（列表上方）：所有机器共享的链接定义，使用 Base 模板路径。这是最常用的类型，存储在 `symlinks.json` 的 `symlinks` 字段中。
+
+**本机管理**（`── 本机管理 ──` 分隔线下方）：仅本机使用的链接，可包含绝对路径，不影响其他机器。适合某台机器特有的、无法提取为全局模板的链接。若后来为其路径注册了 Base，且所有机器都已配置该 Base，链接会自动提升为全局链接。
+
+**离线配置**（`── 离线配置 ──` 分隔线下方）：其他机器的本机链接，在当前机器上尚未配置。双击可参考其他机器的路径，为本机填写对应配置。
+
+**未托管的扫描结果**（`── 未管理的扫描结果 ──` 分隔线下方）：之前扫描过但尚未导入管理的 Junction。右键可「导入管理」（填写编号后纳入全局或本机管理）或「不管理」（忽略并不再提示）。若扫描结果的路径可完全用已注册 Base 表示，且所有机器都配置了该 Base，导入时会自动提升为全局链接。
+
+---
+
+### 自动修复：移动与重命名
+
+**Target 被移动**：Junction 变为断链。若移动在 10 秒内被监听捕获，程序自动更新 JSON 并重建 Junction，右下角 banner 通知；超时则弹修复对话框，需手动更新 Target 路径。
+
+**Target 被重命名（同目录）**：若父目录在监听范围内，watchdog 捕获重命名事件后自动批量更新所有涉及该路径的条目，静默完成。
+
+**Link（Junction 本身）被重命名**：程序在同一父目录下搜索指向相同 Target 的 Junction，找到后自动更新 JSON，静默完成。
+
+**Link 被移动到其他目录**：同样在 10 秒窗口内检测，找到后自动重建。超时需手动更新。
+
+**自动检测新建 Junction**：在已注册 Base 目录内新建 Junction 时，程序自动在 30 秒内检测并托管：编号无冲突时静默注册（banner 通知），编号冲突时弹窗要求输入新编号。
+
+**需手动干预的情形**：程序未运行期间发生的移动/重命名，或目录移动到未被监听的范围（如外部硬盘、未注册的 Base 之外）。在状态窗口双击对应条目手动修改路径即可。
+
+---
+
+## 基本操作
+
+### 新建链接
+
+点击「新建」，填写：
+- **编号**：唯一标识符（建议英文加短横线，如 `my-data-link`）
+- **描述**：可选说明
+- **目标路径**：Junction 指向的真实目录
+- **链接路径**：Junction 本身所在的位置
+
+保存后程序自动建立 Junction。
+
+### 编辑与删除
+
+双击任意行打开编辑对话框。右键菜单提供「删除管理记录」（保留 Junction 文件）和「删除管理记录和目录」（同时删除 Junction）。
+
+支持 Shift / Ctrl 多选后右键批量删除。Delete 键快捷删除选中行（仅删记录，不删 Junction 文件）。
+
+### 扫描已有 Junction
+
+「扫描链接」可扫描指定目录下所有未被管理的 Junction，逐条导入或忽略。扫描完成后关闭窗口，状态窗口自动刷新。
+
+---
+
+## 多机器支持
+
+`symlinks.json` 的关键结构：
 
 ```json
 {
-    "id": "my-link",
-    "description": "Short description of what this link is for",
-    "link": "{onedrive}/path/to/the/link",
-    "target": "{onedrive}/path/to/the/real/folder"
+  "machines": {
+    "LAPTOP":  { "onedrive": "C:/Users/Alice/OneDrive" },
+    "DESKTOP": { "onedrive": "D:/OneDrive" }
+  },
+  "symlinks": [ ... ],
+  "local_data": {
+    "LAPTOP": { "symlinks": [...], "scanned": [...] }
+  }
 }
 ```
 
-`{onedrive}` is resolved per-machine using the `machines` table. Save the file — the watcher picks up the change and builds the junction automatically.
+- `machines`：各机器的 Base 路径，随文件同步到所有机器
+- `symlinks`：全局链接（模板路径），所有机器共享
+- `local_data`：各机器的私有数据，仅由本机写入，其他机器不解析
 
-If the target path differs between machines, use `target_override`:
+新机器首次运行时注册 Base 路径即可，程序根据模板自动解析全部链接。
 
-```json
-{
-    "id": "my-link",
-    "description": "...",
-    "link": "{onedrive}/path/to/link",
-    "target": "D:/default/path",
-    "target_override": {
-        "MY-OTHER-PC": "E:/different/path"
-    }
-}
-```
+---
 
-## Running sync manually
+## 配置
 
-```powershell
-# Normal run
-powershell -ExecutionPolicy Bypass -File "...\Sym-Link\sync_symlinks.ps1"
+托盘右键 → 设置：
 
-# Dry run (shows what would happen, no changes)
-powershell -ExecutionPolicy Bypass -File "...\Sym-Link\sync_symlinks.ps1" -DryRun
+| 选项 | 说明 |
+|------|------|
+| 检测间隔 | 定期检查断链的时间间隔（分钟） |
+| 开机自启 | 登录时自动启动（写入注册表 Run 键） |
+| 关闭时收起到托盘 | 点击主窗口 × 时隐藏到托盘而不退出 |
 
-# Verbose output
-powershell -ExecutionPolicy Bypass -File "...\Sym-Link\sync_symlinks.ps1" -Verbose
-```
-
-## Important: renaming or moving target directories
-
-Junctions store a hardcoded path string. If a target directory is renamed or moved, the junction becomes broken. The watcher will detect this within 10 minutes and show a toast notification.
-
-**Correct workflow when reorganising folders:**
-1. Update `symlinks.json` first
-2. Then rename/move the directory
-3. The watcher rebuilds the junction automatically
-
-## Junction vs target: what OneDrive syncs
-
-OneDrive does not follow junctions. It syncs the target directory directly via its own path. This means:
-
-- If the target is **inside OneDrive**: file changes sync across machines normally. The junction is just a convenient entry point.
-- If the target is **outside OneDrive** (e.g. a large local data folder): the junction is rebuilt on each machine from the JSON, but the contents are local only.
-
-## Scanning for existing shortcuts
-
-To find all existing junctions and `.lnk` shortcuts under OneDrive:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "...\Sym-Link\scan_symlinks.ps1"
-```
-
-Results are printed in real time and saved to `scan_result.txt`.
+真正退出请使用托盘右键菜单中的「退出」。

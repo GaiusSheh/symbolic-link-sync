@@ -22,7 +22,7 @@ _STATUS_LABEL = {
     Status.MISSING: "⚠️ 缺失",
 }
 
-_JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
+from core.paths import SYMLINKS_JSON as _JSON_PATH
 
 
 

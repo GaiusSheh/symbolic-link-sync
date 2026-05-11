@@ -19,7 +19,7 @@ _FILE_ACTION_RENAMED_NEW_NAME = 5
 
 logger = logging.getLogger(__name__)
 
-_JSON_PATH = Path(__file__).parent.parent.parent / "symlinks.json"
+from core.paths import SYMLINKS_JSON as _JSON_PATH
 
 
 class _JsonHandler(FileSystemEventHandler):

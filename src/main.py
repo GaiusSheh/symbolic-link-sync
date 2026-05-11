@@ -27,7 +27,7 @@ from core import symlink_manager as mgr
 from ui.icons import app_icon
 from ui.utils import center_window
 
-_STATE_PATH = Path(__file__).parent / "state.json"
+from core.paths import STATE_JSON as _STATE_PATH, LOG_PATH as _LOG_PATH_IMPORT
 
 
 def _load_confirmed_empty() -> set[str]:
@@ -55,7 +55,7 @@ from ui.tray import TrayIcon
 from core.watcher import BackgroundWatcher
 from ui.window import StatusWindow
 
-_LOG_PATH = Path(__file__).parent / "symlink-gui.log"
+_LOG_PATH = _LOG_PATH_IMPORT
 _POLL_MS  = 100
 
 
