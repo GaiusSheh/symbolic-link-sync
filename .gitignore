@@ -13,6 +13,8 @@ src/*.spec
 # Runtime state / logs
 SymLiSync.log
 SymLiSync.log.*
+symlink-gui.log
+symlink-gui.log.*
 
 # User data — all in data/ (changes with use, not part of source)
 data/
