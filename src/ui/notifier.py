@@ -36,7 +36,7 @@ def send_toast(title: str, body: str) -> None:
     try:
         from winotify import Notification, audio
         toast = Notification(
-            app_id="Sym-Link",
+            app_id="SymLiSync",
             title=title,
             msg=body,
             duration="short",

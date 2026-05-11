@@ -27,7 +27,7 @@ class SetupWizard:
     def _build(self):
         win = tk.Toplevel(self._root)
         self._win = win
-        win.title("配置 Sym-Link")
+        win.title("配置 SymLiSync")
         win.resizable(False, False)
         win.protocol("WM_DELETE_WINDOW", self._skip)
 

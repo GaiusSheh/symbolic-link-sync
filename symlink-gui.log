@@ -1,0 +1,137 @@
+2026-05-11 10:56:01,448  DEBUG     PIL.Image  Importing PngImagePlugin
+2026-05-11 10:56:01,480  DEBUG     PIL.PngImagePlugin  STREAM b'IHDR' 16 13
+2026-05-11 10:56:01,480  DEBUG     PIL.PngImagePlugin  STREAM b'IDAT' 41 14718
+2026-05-11 10:56:01,523  DEBUG     PIL.PngImagePlugin  STREAM b'IHDR' 16 13
+2026-05-11 10:56:01,523  DEBUG     PIL.PngImagePlugin  STREAM b'IDAT' 41 3118
+2026-05-11 10:56:01,529  INFO      core.watcher  Watching C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\data\symlinks.json
+2026-05-11 10:56:01,594  DEBUG     PIL.Image  Importing AvifImagePlugin
+2026-05-11 10:56:01,600  DEBUG     PIL.Image  Importing BlpImagePlugin
+2026-05-11 10:56:01,603  DEBUG     PIL.Image  Importing BmpImagePlugin
+2026-05-11 10:56:01,604  DEBUG     PIL.Image  Importing BufrStubImagePlugin
+2026-05-11 10:56:01,606  DEBUG     PIL.Image  Importing CurImagePlugin
+2026-05-11 10:56:01,609  DEBUG     PIL.Image  Importing DcxImagePlugin
+2026-05-11 10:56:01,613  DEBUG     PIL.Image  Importing DdsImagePlugin
+2026-05-11 10:56:01,618  DEBUG     PIL.Image  Importing EpsImagePlugin
+2026-05-11 10:56:01,621  DEBUG     PIL.Image  Importing FitsImagePlugin
+2026-05-11 10:56:01,626  DEBUG     PIL.Image  Importing FliImagePlugin
+2026-05-11 10:56:01,628  DEBUG     PIL.Image  Importing FpxImagePlugin
+2026-05-11 10:56:01,631  DEBUG     PIL.Image  Image: failed to import FpxImagePlugin: No module named 'olefile'
+2026-05-11 10:56:01,631  DEBUG     PIL.Image  Importing FtexImagePlugin
+2026-05-11 10:56:01,634  DEBUG     PIL.Image  Importing GbrImagePlugin
+2026-05-11 10:56:01,637  DEBUG     PIL.Image  Importing GifImagePlugin
+2026-05-11 10:56:01,637  DEBUG     PIL.Image  Importing GribStubImagePlugin
+2026-05-11 10:56:01,639  DEBUG     PIL.Image  Importing Hdf5StubImagePlugin
+2026-05-11 10:56:01,641  DEBUG     PIL.Image  Importing IcnsImagePlugin
+2026-05-11 10:56:01,649  DEBUG     PIL.Image  Importing IcoImagePlugin
+2026-05-11 10:56:01,652  DEBUG     PIL.Image  Importing ImImagePlugin
+2026-05-11 10:56:01,655  DEBUG     PIL.Image  Importing ImtImagePlugin
+2026-05-11 10:56:01,657  DEBUG     PIL.Image  Importing IptcImagePlugin
+2026-05-11 10:56:01,659  DEBUG     PIL.Image  Importing JpegImagePlugin
+2026-05-11 10:56:01,660  DEBUG     PIL.Image  Importing Jpeg2KImagePlugin
+2026-05-11 10:56:01,660  DEBUG     PIL.Image  Importing McIdasImagePlugin
+2026-05-11 10:56:01,662  DEBUG     PIL.Image  Importing MicImagePlugin
+2026-05-11 10:56:01,666  DEBUG     PIL.Image  Image: failed to import MicImagePlugin: No module named 'olefile'
+2026-05-11 10:56:01,666  DEBUG     PIL.Image  Importing MpegImagePlugin
+2026-05-11 10:56:01,670  DEBUG     PIL.Image  Importing MpoImagePlugin
+2026-05-11 10:56:01,675  DEBUG     PIL.Image  Importing MspImagePlugin
+2026-05-11 10:56:01,677  DEBUG     PIL.Image  Importing PalmImagePlugin
+2026-05-11 10:56:01,680  DEBUG     PIL.Image  Importing PcdImagePlugin
+2026-05-11 10:56:01,682  DEBUG     PIL.Image  Importing PcxImagePlugin
+2026-05-11 10:56:01,682  DEBUG     PIL.Image  Importing PdfImagePlugin
+2026-05-11 10:56:01,694  DEBUG     PIL.Image  Importing PixarImagePlugin
+2026-05-11 10:56:01,696  DEBUG     PIL.Image  Importing PngImagePlugin
+2026-05-11 10:56:01,696  DEBUG     PIL.Image  Importing PpmImagePlugin
+2026-05-11 10:56:01,696  DEBUG     PIL.Image  Importing PsdImagePlugin
+2026-05-11 10:56:01,699  DEBUG     PIL.Image  Importing QoiImagePlugin
+2026-05-11 10:56:01,701  DEBUG     PIL.Image  Importing SgiImagePlugin
+2026-05-11 10:56:01,703  DEBUG     PIL.Image  Importing SpiderImagePlugin
+2026-05-11 10:56:01,704  DEBUG     PIL.Image  Importing SunImagePlugin
+2026-05-11 10:56:01,707  DEBUG     PIL.Image  Importing TgaImagePlugin
+2026-05-11 10:56:01,709  DEBUG     PIL.Image  Importing TiffImagePlugin
+2026-05-11 10:56:01,709  DEBUG     PIL.Image  Importing WebPImagePlugin
+2026-05-11 10:56:01,713  DEBUG     PIL.Image  Importing WmfImagePlugin
+2026-05-11 10:56:01,715  DEBUG     PIL.Image  Importing XbmImagePlugin
+2026-05-11 10:56:01,718  DEBUG     PIL.Image  Importing XpmImagePlugin
+2026-05-11 10:56:01,720  DEBUG     PIL.Image  Importing XVThumbImagePlugin
+2026-05-11 10:56:01,819  INFO      root  [startup] Running sync...
+2026-05-11 10:56:01,863  DEBUG     PIL.PngImagePlugin  STREAM b'IHDR' 16 13
+2026-05-11 10:56:01,864  DEBUG     PIL.PngImagePlugin  STREAM b'IDAT' 41 2972
+2026-05-11 10:56:01,886  INFO      core.watcher  Watching C:\Smalltools\test-drive\A (recursive=True)
+2026-05-11 10:56:01,887  INFO      core.watcher  Watching C:\Smalltools\test-drive\B (recursive=True)
+2026-05-11 10:56:01,888  INFO      core.watcher  Watching C:\Users\Shi_Y\OneDrive (recursive=True)
+2026-05-11 10:56:01,891  INFO      core.watcher  DriveRootThread started: C:\
+2026-05-11 10:56:01,892  INFO      core.watcher  DriveRootThread started: G:\
+2026-05-11 10:56:01,892  INFO      root  Sync done: 0 created, 29 skipped, 0 failed, 0 broken
+2026-05-11 10:56:02,141  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,142  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,143  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,322  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,323  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,731  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,733  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,733  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,734  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,735  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:02,735  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,135  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,136  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,137  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,541  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,541  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,542  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,943  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,945  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:03,946  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:04,348  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:04,349  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:04,769  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:04,770  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:04,771  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,174  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,174  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,578  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,579  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,579  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,580  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,580  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,969  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:05,970  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,372  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,373  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,374  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,374  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,789  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,790  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:06,791  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,068  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,197  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,198  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,199  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,199  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,602  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,603  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,603  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,604  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,605  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,605  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:07,606  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,005  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,006  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,409  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,410  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,411  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,811  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,812  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:08,813  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,217  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,218  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,218  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,621  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,622  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,622  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:09,623  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:10,027  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:10,028  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:10,028  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:10,029  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=
+2026-05-11 10:56:10,030  DEBUG     core.watcher  [watchdog] modified  is_dir=False  src=C:\Users\Shi_Y\OneDrive\Codes\my-tools\Sym-Link\symlink-gui.log  dest=

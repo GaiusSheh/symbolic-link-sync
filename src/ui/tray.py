@@ -40,7 +40,7 @@ def _status_tooltip(entries) -> str:
     if broken:  parts.append(f"{broken} broken")
     if pending: parts.append(f"{pending} pending")
     if missing: parts.append(f"{missing} missing")
-    return "Sym-Link: " + ", ".join(parts)
+    return "SymLiSync: " + ", ".join(parts)
 
 
 class TrayIcon:
@@ -58,9 +58,9 @@ class TrayIcon:
         self._entries = []
 
         self._icon = pystray.Icon(
-            "sym-link",
+            "symliSync",
             icon=tray_icon("green"),
-            title="Sym-Link",
+            title="SymLiSync",
             menu=self._build_menu(),
         )
 

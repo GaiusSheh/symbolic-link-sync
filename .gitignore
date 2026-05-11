@@ -11,8 +11,8 @@ src/ui/__pycache__/
 src/*.spec
 
 # Runtime state / logs
-symlink-gui.log
-symlink-gui.log.*
+SymLiSync.log
+SymLiSync.log.*
 
 # User data — all in data/ (changes with use, not part of source)
 data/

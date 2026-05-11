@@ -23,7 +23,7 @@ DATA_DIR      = _root() / "data"
 SYMLINKS_JSON = DATA_DIR / "symlinks.json"   # default; may be overridden by set_symlinks_json()
 SETTINGS_JSON = DATA_DIR / "settings.json"
 STATE_JSON    = DATA_DIR / "state.json"
-LOG_PATH      = _root() / "symlink-gui.log"
+LOG_PATH      = _root() / "SymLiSync.log"
 
 # Ensure data/ exists at import time (safe to call repeatedly)
 DATA_DIR.mkdir(parents=True, exist_ok=True)

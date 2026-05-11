@@ -92,11 +92,11 @@ class App:
             Path(self._settings.symlinks_path) if self._settings.symlinks_path
             else SYMLINKS_JSON
         )
-        self._root.title("Sym-Link")
+        self._root.title("SymLiSync")
         try:
             # Give the process its own taskbar identity (separates from python.exe)
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-                "YuanFeng.SymLink.GUI"
+                "YuanFeng.SymLiSync"
             )
             # iconphoto with high-res PNG — must be LAST icon call (iconbitmap overwrites it)
             from PIL import ImageTk
@@ -262,12 +262,12 @@ class App:
         self._entries = mgr.check_all()
         self._refresh_ui()
         if result.created:
-            send_toast("Sym-Link: 已创建链接", ", ".join(result.created))
+            send_toast("SymLiSync:已创建链接", ", ".join(result.created))
         if result.failed:
-            send_toast("Sym-Link: 创建失败", ", ".join(result.failed))
+            send_toast("SymLiSync:创建失败", ", ".join(result.failed))
         if result.broken:
             ids = ", ".join(result.broken)
-            send_toast(f"Sym-Link: {len(result.broken)} 个断链", ids)
+            send_toast(f"SymLiSync:{len(result.broken)} 个断链", ids)
         logging.info("Smart sync done: %d created, %d failed, %d broken",
                      len(result.created), len(result.failed), len(result.broken))
 
@@ -291,7 +291,7 @@ class App:
 
         if result.broken:
             ids = ", ".join(result.broken)
-            send_toast(title=f"Sym-Link: {len(result.broken)} 个断链", body=ids)
+            send_toast(title=f"SymLiSync:{len(result.broken)} 个断链", body=ids)
 
     def _do_repath(self, old_path: str, new_path: str):
         logging.info("Dir moved: %s → %s", old_path, new_path)
@@ -306,8 +306,8 @@ class App:
         msg = f"已更新 {len(updated)} 项路径：{old_name} → {new_name}"
         if failed:
             msg += f"，{len(failed)} 项 junction 重建失败"
-        send_toast("Sym-Link: 已自动更新路径", msg)
-        show_banner(self._root, "Sym-Link: 已自动更新路径", msg)
+        send_toast("SymLiSync:已自动更新路径", msg)
+        show_banner(self._root, "SymLiSync:已自动更新路径", msg)
         logging.info("Repath done: %d updated, %d failed", len(updated), len(failed))
 
     def _do_open_window(self):
@@ -378,8 +378,8 @@ class App:
                         msg = f"已更新 {len(updated)} 项路径：{old_base.name} → {new_base.name}"
                         if failed:
                             msg += f"，{len(failed)} 项 junction 重建失败"
-                        send_toast("Sym-Link: 已自动更新路径", msg)
-                        show_banner(self._root, "Sym-Link: 已自动更新路径", msg)
+                        send_toast("SymLiSync:已自动更新路径", msg)
+                        show_banner(self._root, "SymLiSync:已自动更新路径", msg)
                 else:
                     # Check if the junction itself moved between watched base dirs
                     new_link = self._find_moved_junction(entry)
@@ -387,8 +387,8 @@ class App:
                         logging.info("Junction moved: %s → %s", entry.link, new_link)
                         mgr.edit_entry(entry.id, new_link=new_link)
                         msg = f"{entry.id}: {entry.link.parent.name} → {new_link.parent.name}"
-                        send_toast("Sym-Link: 已自动更新", msg)
-                        show_banner(self._root, "Sym-Link: 已自动更新", msg)
+                        send_toast("SymLiSync:已自动更新", msg)
+                        show_banner(self._root, "SymLiSync:已自动更新", msg)
                         self._entries = mgr.check_all()
                         continue  # process remaining entries; stale prev is harmless here
                     else:
@@ -432,8 +432,8 @@ class App:
                 if new_path:
                     mgr.rename_link_in_json(entry.id, new_path)
                     msg = f"{entry.id}: {entry.link.name} → {new_path.name}"
-                    send_toast("Sym-Link: 已自动更新", msg)
-                    show_banner(self._root, "Sym-Link: 已自动更新", msg)
+                    send_toast("SymLiSync:已自动更新", msg)
+                    show_banner(self._root, "SymLiSync:已自动更新", msg)
                     self._entries = mgr.check_all()
                     logging.info("Rename detected: %s → %s", entry.link, new_path)
                     continue
@@ -469,7 +469,7 @@ class App:
 
             # ── Other new BROKEN entry (PENDING/MISSING → BROKEN, or brand-new) ──
             elif entry.status == Status.BROKEN and (not prev_entry or prev_entry.status != Status.BROKEN):
-                send_toast("Sym-Link: 断链", f"{entry.id}: target 不可达")
+                send_toast("SymLiSync:断链", f"{entry.id}: target 不可达")
 
         self._check_for_new_junctions()
         self._refresh_ui()
@@ -538,7 +538,7 @@ class App:
             mgr.normalize_entries()
             self._entries = mgr.check_all()
             names = "、".join(registered)
-            show_banner(self._root, "Sym-Link: 已自动托管新链接",
+            show_banner(self._root, "SymLiSync:已自动托管新链接",
                         f"检测到 {len(registered)} 个新 Junction：{names}")
 
         for path, target, suggested_id in to_prompt:
@@ -553,7 +553,7 @@ class App:
         bases = mgr.get_machine_config() or {}
 
         dlg = tk.Toplevel(self._root)
-        dlg.title("Sym-Link: 发现未管理的 Junction")
+        dlg.title("SymLiSync:发现未管理的 Junction")
         dlg.resizable(False, False)
         dlg.attributes("-topmost", True)
 
@@ -634,13 +634,13 @@ class App:
             mgr.rename_link_in_json(entry.id, new_dir)
             mgr.normalize_entries()
             msg = f"{entry.id}: {entry.link.name} → {new_dir.name}"
-            send_toast("Sym-Link: 已自动修复 Explorer 移动", msg)
-            show_banner(self._root, "Sym-Link: 已自动修复 Explorer 移动", msg)
+            send_toast("SymLiSync:已自动修复 Explorer 移动", msg)
+            show_banner(self._root, "SymLiSync:已自动修复 Explorer 移动", msg)
             logging.info("Explorer link recovery done: %s → %s", entry.link, new_dir)
 
         except Exception as exc:
             msg = f"{entry.id} 自动修复失败：{exc}\n请在状态窗口中手动重建"
-            show_banner(self._root, "Sym-Link: 恢复失败", msg)
+            show_banner(self._root, "SymLiSync:恢复失败", msg)
             logging.error("Explorer link recovery failed for %s: %s", entry.id, exc)
 
         self._entries = mgr.check_all()
@@ -649,7 +649,7 @@ class App:
     def _show_repair_dialog(self, entry: LinkEntry, reason: str):
         """Modal dialog asking the user to repair a broken entry manually."""
         dlg = tk.Toplevel(self._root)
-        dlg.title("Sym-Link: 需要手动修复")
+        dlg.title("SymLiSync:需要手动修复")
         dlg.resizable(False, False)
         dlg.attributes("-topmost", True)
 
@@ -676,7 +676,7 @@ class App:
         """Dialog when target is empty: let user confirm intentional or open status list."""
         import tkinter.ttk as ttk
         dlg = tk.Toplevel(self._root)
-        dlg.title("Sym-Link: 目标目录为空")
+        dlg.title("SymLiSync:目标目录为空")
         dlg.resizable(False, False)
         dlg.attributes("-topmost", True)
 
@@ -714,11 +714,11 @@ class App:
         mgr.normalize_entries()
         if ok:
             msg = f"{entry.id}: target 路径已更新 → {new_dir.name}"
-            show_banner(self._root, "Sym-Link: 已自动更新 target 路径", msg)
+            show_banner(self._root, "SymLiSync:已自动更新 target 路径", msg)
             logging.info("Explorer target recovery done: %s → %s", entry.target, new_dir)
         else:
             msg = f"{entry.id} target 路径更新失败，请手动重建"
-            show_banner(self._root, "Sym-Link: 更新失败", msg)
+            show_banner(self._root, "SymLiSync:更新失败", msg)
         self._entries = mgr.check_all()
         self._refresh_ui()
 

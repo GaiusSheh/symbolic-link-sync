@@ -83,7 +83,7 @@ class StatusWindow:
     def _build(self, entries: list[LinkEntry]):
         win = tk.Toplevel(self._root)
         self._win = win
-        win.title("Sym-Link 状态")
+        win.title("SymLiSync 状态")
         win.resizable(True, True)
         try:
             from ui.icons import app_icon

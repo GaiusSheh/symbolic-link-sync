@@ -8,7 +8,7 @@ from pathlib import Path
 
 from core.paths import SETTINGS_JSON as _SETTINGS_PATH
 _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-_APP_NAME = "SymLinkGUI"
+_APP_NAME = "SymLiSync"
 
 
 @dataclass

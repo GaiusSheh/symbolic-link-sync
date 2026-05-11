@@ -1,4 +1,4 @@
-# Sym-Link GUI
+# SymLiSync
 
 Windows Junction 管理工具。OneDrive 不会同步 Junction（目录符号链接），该工具在每台机器上后台运行，自动维护 `symlinks.json` 中定义的全部 Junction，并在链接失效时自动检测和修复。
 
@@ -8,7 +8,7 @@ Windows Junction 管理工具。OneDrive 不会同步 Junction（目录符号链
 
 ### Base 路径
 
-Junction 的路径在不同机器上根目录不同（如 OneDrive 在 A 机是 `C:\Users\Alice\OneDrive`，在 B 机是 `D:\OneDrive`）。Sym-Link 使用模板变量解决这个问题：
+Junction 的路径在不同机器上根目录不同（如 OneDrive 在 A 机是 `C:\Users\Alice\OneDrive`，在 B 机是 `D:\OneDrive`）。SymLiSync 使用模板变量解决这个问题：
 
 ```
 链接路径：{onedrive}/Codes/my-project/data-link

@@ -31,7 +31,7 @@ class SettingsWindow:
 
         win = tk.Toplevel(self._root)
         self._win = win
-        win.title("Sym-Link 设置")
+        win.title("SymLiSync 设置")
         win.resizable(False, False)
         win.protocol("WM_DELETE_WINDOW", win.withdraw)
 
