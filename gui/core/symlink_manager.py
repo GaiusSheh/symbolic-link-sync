@@ -598,7 +598,7 @@ def _create_junction(link: Path, target: Path) -> tuple[bool, str]:
     cmd = f'mklink /J "{link}" "{target}"'
     r   = subprocess.run(cmd, shell=True, capture_output=True,
                          creationflags=subprocess.CREATE_NO_WINDOW)
-    err = _decode(r.stderr) or _decode(r.stdout)
+    err = _decode(r.stdout) or _decode(r.stderr)   # mklink writes errors to stdout
     return r.returncode == 0, err
 
 
