@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def _root() -> Path:
-    """Directory that contains data/ and symlink-gui.log.
+    """Directory that contains data/ and SymLiSync.log.
 
     Frozen: directory of the exe.
     Dev:    Sym-Link/ repo root (this file is gui/core/paths.py → 3 parents up).
