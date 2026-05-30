@@ -21,7 +21,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import json
+import win32clipboard
+import win32com.client
+import win32con
+import pythoncom
 from typing import Optional
+from core import explorer_menu
+from core import hotkeys
+from core import ipc
 from core import settings_manager as sm
 from core import symlink_manager as mgr
 from ui.icons import app_icon
@@ -61,18 +68,29 @@ _POLL_MS  = 100
 
 
 def _setup_logging():
-    _LOG_PATH.unlink(missing_ok=True)          # fresh log each run
-    Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
-    handler = logging.FileHandler(_LOG_PATH, encoding="utf-8")
+    # Log is non-critical: if another (e.g. old) instance still holds it,
+    # don't crash — skip the reset and/or fall back to console-only.
+    try:
+        _LOG_PATH.unlink(missing_ok=True)          # fresh log each run
+        Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
+    except OSError:
+        pass
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    try:
+        handlers.insert(0, logging.FileHandler(_LOG_PATH, encoding="utf-8"))
+    except OSError:
+        pass
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-        handlers=[handler, logging.StreamHandler(sys.stdout)],
+        handlers=handlers,
     )
 
 
 class App:
-    def __init__(self):
+    def __init__(self, mutex_handle=None, pending_action: Optional[dict] = None):
+        self._mutex_handle = mutex_handle      # keep alive → singleton mutex stays held
+        self._pending_action = pending_action  # context action to run after startup
         self._q: queue.Queue = queue.Queue()
         self._settings = sm.load()
 
@@ -174,8 +192,26 @@ class App:
         tray_thread = threading.Thread(target=self._tray.run, daemon=True, name="tray")
         tray_thread.start()
 
+        # IPC server: a second launch forwards its request here (single instance).
+        ipc.serve(lambda payload: self._q.put(("ctx", payload)))
+
+        # Explorer integration is on by default (opt-out in settings).
+        # Re-register on every start so the menu command always points at the
+        # current exe location, and start the Explorer-scoped hotkey hook.
+        if self._settings.explorer_menu:
+            try:
+                explorer_menu.register()
+            except OSError:
+                logging.exception("explorer menu register failed")
+        if self._settings.hotkeys:
+            hotkeys.start(lambda action, hwnd: self._q.put(("hotkey", action, hwnd)))
+
         self._watcher.start()
         self._q.put(("sync", "startup"))
+
+        # Context action passed on the launching command line (instance was not yet running)
+        if self._pending_action:
+            self._q.put(("ctx", self._pending_action))
 
         self._root.after(_POLL_MS, self._poll)
         self._root.mainloop()
@@ -208,6 +244,10 @@ class App:
             self._settings_win.show()
         elif kind == "refresh":
             self._do_refresh()
+        elif kind == "ctx":
+            self._do_context_action(msg[1])
+        elif kind == "hotkey":
+            self._do_hotkey(msg[1], msg[2])
         elif kind == "quit":
             self._do_quit()
 
@@ -227,6 +267,138 @@ class App:
 
     def _quit(self):
         self._q.put(("quit",))
+
+    # ── Explorer context-menu actions (main thread) ───────────────────────────
+
+    def _do_context_action(self, payload: dict):
+        verb = payload.get("verb", "")
+        path = payload.get("path", "")
+        logging.info("context action: verb=%s path=%s", verb, path)
+        if verb == "show":
+            self._do_open_window()
+        elif verb == "new-link-to":
+            self._window.open_new_link_dialog(
+                target_val=path, name_init=Path(path).name)
+        elif verb == "replace-link":
+            self._window.open_new_link_dialog(link_parent=path, replace_init=True)
+        elif verb == "new-link-here":
+            self._window.open_new_link_dialog(link_parent=path)
+        elif verb == "paste-link":
+            self._do_paste_link(path)
+        elif verb == "inplace-link":
+            self._do_inplace_link([path])
+
+    @staticmethod
+    def _unique_id(base: str, existing: set[str]) -> str:
+        if base not in existing:
+            return base
+        i = 2
+        while f"{base}-{i}" in existing:
+            i += 1
+        return f"{base}-{i}"
+
+    def _create_managed_link(self, link: Path, target: Path, existing: set[str]):
+        """Create one managed junction; confirm before clobbering a non-empty dir.
+        Returns (ok, entry_id, err)."""
+        from tkinter import messagebox
+        eid = self._unique_id(link.name, existing)
+        existing.add(eid)
+        try:
+            ok, err = mgr.create_entry(eid, "", link, target)
+            if not ok and err == mgr.ERR_LINK_NONEMPTY:
+                if messagebox.askyesno(
+                    "目录非空",
+                    f"目标已存在非空目录：\n{link}\n\n删除其中所有内容并建立链接？",
+                    icon="warning", parent=self._root,
+                ):
+                    ok, err = mgr.create_entry(eid, "", link, target, force_overwrite=True)
+            return ok, eid, err
+        except Exception as exc:
+            return False, eid, str(exc)
+
+    def _finish_links(self, pairs: list, ok_title: str):
+        """Create each (link, target) pair, refresh, and report."""
+        existing = set(mgr.get_all_entry_ids())
+        created: list[str] = []
+        failed:  list[tuple[str, str]] = []
+        for link, target in pairs:
+            ok, eid, err = self._create_managed_link(link, target, existing)
+            if ok:
+                created.append(eid)
+            else:
+                failed.append((eid, err))
+        mgr.normalize_entries()
+        self._entries = mgr.check_all()
+        self._refresh_ui()
+        if created:
+            send_toast(ok_title, "、".join(created))
+        if failed:
+            show_banner(self._root, "SymLiSync:部分失败",
+                        "\n".join(f"{e}: {er}" for e, er in failed))
+
+    def _do_paste_link(self, dest_dir: str):
+        """Read folder paths from the clipboard (CF_HDROP) and create a managed
+        junction for each under dest_dir."""
+        paths: list = []
+        try:
+            win32clipboard.OpenClipboard()
+            try:
+                if win32clipboard.IsClipboardFormatAvailable(win32con.CF_HDROP):
+                    paths = list(win32clipboard.GetClipboardData(win32con.CF_HDROP))
+            finally:
+                win32clipboard.CloseClipboard()
+        except Exception:
+            logging.exception("clipboard read failed")
+
+        folders = [Path(p) for p in paths if Path(p).is_dir()]
+        if not folders:
+            show_banner(self._root, "SymLiSync:粘贴为符号链接",
+                        "剪贴板里没有可粘贴为符号链接的文件夹。\n"
+                        "请先在资源管理器里 Ctrl+C 复制一个文件夹。")
+            return
+        pairs = [(Path(dest_dir) / src.name, src) for src in folders]
+        self._finish_links(pairs, "SymLiSync:已粘贴为符号链接")
+
+    def _do_inplace_link(self, folders: list):
+        """Create an "<name> - 符号链接" junction next to each source folder
+        (pointing at it). The user then moves/renames it freely — watched."""
+        srcs = [Path(f) for f in folders if Path(f).is_dir()]
+        if not srcs:
+            show_banner(self._root, "SymLiSync:原地创建符号链接",
+                        "请先在资源管理器里选中一个文件夹。")
+            return
+        pairs = [(src.parent / f"{src.name} - 符号链接", src) for src in srcs]
+        self._finish_links(pairs, "SymLiSync:已原地创建符号链接")
+
+    def _do_hotkey(self, action: str, hwnd: int):
+        """Explorer-scoped hotkey: resolve the foreground Explorer window's
+        folder (Ctrl+Q → paste) or selection (Ctrl+J → in-place) via Shell COM."""
+        try:
+            try:
+                pythoncom.CoInitialize()
+            except Exception:
+                pass
+            shell = win32com.client.Dispatch("Shell.Application")
+            win = None
+            for w in shell.Windows():
+                try:
+                    if int(w.HWND) == int(hwnd):
+                        win = w
+                        break
+                except Exception:
+                    continue
+            if win is None:
+                logging.info("hotkey %s: no Explorer window for hwnd=%s", action, hwnd)
+                return
+            if action == "paste":
+                self._do_paste_link(win.Document.Folder.Self.Path)
+            elif action == "inplace":
+                items = win.Document.SelectedItems()
+                folders = [items.Item(i).Path for i in range(items.Count)
+                           if items.Item(i).IsFolder]
+                self._do_inplace_link(folders)
+        except Exception:
+            logging.exception("hotkey handler failed: action=%s", action)
 
     # ── Actions (main thread) ─────────────────────────────────────────────────
 
@@ -869,6 +1041,11 @@ class App:
         self._settings = new_settings
         self._watcher.set_interval(new_settings.check_interval_minutes * 60)
         self._apply_close_to_tray(new_settings.close_to_tray)
+        # Start/stop the Explorer-scoped keyboard hook to match the setting
+        if new_settings.hotkeys and not hotkeys.is_running():
+            hotkeys.start(lambda action, hwnd: self._q.put(("hotkey", action, hwnd)))
+        elif not new_settings.hotkeys and hotkeys.is_running():
+            hotkeys.stop()
         mgr.refresh_machine_drives()
         self._watcher.update_drive_roots(mgr.get_machine_drives())
         logging.info("Settings applied: interval=%dmin autostart=%s close_to_tray=%s",
@@ -877,9 +1054,28 @@ class App:
                      new_settings.close_to_tray)
 
 
+_CONTEXT_VERBS = {"--new-link-to", "--replace-link", "--new-link-here",
+                  "--paste-link", "--inplace-link"}
+
+
+def parse_context_arg(argv: list[str]) -> Optional[dict]:
+    """Parse an Explorer context-menu invocation: `<exe> --verb "<path>"`."""
+    if len(argv) >= 3 and argv[1] in _CONTEXT_VERBS:
+        return {"verb": argv[1][2:], "path": argv[2]}
+    return None
+
+
 def main():
+    # Decide single-instance BEFORE touching the log file: a secondary instance
+    # must not open/truncate SymLiSync.log (the primary holds it → WinError 32).
+    action = parse_context_arg(sys.argv)
+    handle, already = ipc.acquire_singleton()
+    if already:
+        # Another instance owns the tray: forward this request (or just focus it) and exit.
+        ipc.send(action or {"verb": "show"})
+        return
     _setup_logging()
-    App().run()
+    App(mutex_handle=handle, pending_action=action).run()
 
 
 if __name__ == "__main__":

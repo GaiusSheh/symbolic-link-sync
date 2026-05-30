@@ -5,6 +5,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 
+from core import explorer_menu
 from core import settings_manager as sm
 from core import symlink_manager as mgr
 from ui.utils import apply_base_registration, build_base_row, center_window
@@ -62,6 +63,17 @@ class SettingsWindow:
         ttk.Checkbutton(behavior_lf,
                         text="关闭窗口时最小化到托盘（取消则直接退出）",
                         variable=self._close_to_tray_var).pack(anchor="w")
+
+        # Reflect the real registry state, not just the saved setting
+        self._explorer_menu_var = tk.BooleanVar(value=explorer_menu.is_registered())
+        ttk.Checkbutton(behavior_lf,
+                        text="添加到资源管理器右键菜单（粘贴为符号链接等；Win11 在「显示更多选项」内）",
+                        variable=self._explorer_menu_var).pack(anchor="w", pady=(6, 0))
+
+        self._hotkeys_var = tk.BooleanVar(value=s.hotkeys)
+        ttk.Checkbutton(behavior_lf,
+                        text="启用快捷键（仅资源管理器内：Ctrl+Q 粘贴为符号链接、Ctrl+J 原地创建）",
+                        variable=self._hotkeys_var).pack(anchor="w", pady=(6, 0))
 
         # ── Sync directories (base paths) ─────────────────────────────────────
         bases_lf = ttk.LabelFrame(outer, text="同步目录", padding=10)
@@ -156,12 +168,29 @@ class SettingsWindow:
 
         # ── Apply other settings ──────────────────────────────────────────────
         interval = max(1, min(1440, self._interval_var.get()))
+        explorer_on = self._explorer_menu_var.get()
+        # Preserve symlinks_path (not exposed in this dialog)
+        prev = sm.load()
         new_s = sm.Settings(
             check_interval_minutes=interval,
             autostart=self._autostart_var.get(),
             close_to_tray=self._close_to_tray_var.get(),
+            symlinks_path=prev.symlinks_path,
+            explorer_menu=explorer_on,
+            hotkeys=self._hotkeys_var.get(),
         )
         sm.save(new_s)
         sm.set_autostart(new_s.autostart)
+
+        # Apply Explorer context-menu registration to match the checkbox
+        try:
+            if explorer_on:
+                explorer_menu.register()
+            else:
+                explorer_menu.unregister()
+        except OSError as exc:
+            messagebox.showwarning("右键菜单设置失败",
+                                   f"无法写入注册表：{exc}", parent=self._win)
+
         self._on_apply(new_s)
         self._win.withdraw()

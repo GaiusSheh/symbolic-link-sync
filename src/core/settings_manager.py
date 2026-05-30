@@ -17,6 +17,8 @@ class Settings:
     autostart: bool = False
     close_to_tray: bool = True
     symlinks_path: str = ""   # empty = not yet configured; first-run wizard shown on startup
+    explorer_menu: bool = True    # add SymLiSync entries to the Explorer context menu
+    hotkeys: bool = True          # Explorer-scoped Ctrl+Q / Ctrl+J keyboard hook
 
 
 def load() -> Settings:
@@ -30,6 +32,8 @@ def load() -> Settings:
             autostart=bool(data.get("autostart", False)),
             close_to_tray=bool(data.get("close_to_tray", True)),
             symlinks_path=str(data.get("symlinks_path", "")),
+            explorer_menu=bool(data.get("explorer_menu", True)),
+            hotkeys=bool(data.get("hotkeys", True)),
         )
     except Exception:
         return Settings()
@@ -45,6 +49,18 @@ def _exe_path() -> str:
     if getattr(sys, "frozen", False):
         return sys.executable
     # Running as script: use pythonw so no console window appears
+    pythonw = Path(sys.executable).parent / "pythonw.exe"
+    if not pythonw.exists():
+        pythonw = Path(sys.executable)
+    main = Path(__file__).parent.parent / "main.py"
+    return f'"{pythonw}" "{main}"'
+
+
+def launch_command_prefix() -> str:
+    """Quoted launcher prefix for building command lines that take arguments
+    (frozen: the exe; dev: pythonw + main.py). Used by the Explorer menu."""
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}"'
     pythonw = Path(sys.executable).parent / "pythonw.exe"
     if not pythonw.exists():
         pythonw = Path(sys.executable)

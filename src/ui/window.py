@@ -318,7 +318,7 @@ class StatusWindow:
                 label=f"删除 {n} 项的管理记录",
                 command=lambda: self._delete_entries(selected_entries, remove_junction=False))
             menu.add_command(
-                label=f"删除 {n} 项的管理记录和目录",
+                label=f"删除 {n} 项的管理记录和符号链接",
                 command=lambda: self._delete_entries(selected_entries, remove_junction=True))
             menu.tk_popup(event.x_root, event.y_root)
             return
@@ -353,7 +353,7 @@ class StatusWindow:
         menu.add_separator()
         menu.add_command(label="删除管理",
                          command=lambda: self._delete_entry(entry, remove_junction=False))
-        menu.add_command(label="删除管理和目录",
+        menu.add_command(label="删除管理和符号链接",
                          command=lambda: self._delete_entry(entry, remove_junction=True))
         menu.tk_popup(event.x_root, event.y_root)
 
@@ -563,9 +563,10 @@ class StatusWindow:
 
     def _delete_entry(self, entry, remove_junction: bool = True):
         if remove_junction:
-            msg = f"确认删除「{entry.id}」的管理记录，并同时删除对应的 Junction 目录？"
+            msg = (f"确认删除「{entry.id}」的管理记录，并同时删除符号链接本身？\n\n"
+                   "（仅删除链接，不影响它指向的真实数据）")
         else:
-            msg = f"确认删除「{entry.id}」的管理记录？\n\nJunction 目录本身不会被删除。"
+            msg = f"确认删除「{entry.id}」的管理记录？\n\n符号链接本身不会被删除。"
         if not messagebox.askyesno("确认删除", msg, icon="warning", parent=self._win):
             return
         ok, err = delete_entry(entry.id, remove_junction=remove_junction)
@@ -577,9 +578,10 @@ class StatusWindow:
     def _delete_entries(self, entries: list, remove_junction: bool = True):
         names = "\n".join(f"  • {e.id}" for e in entries)
         if remove_junction:
-            msg = f"确认删除以下 {len(entries)} 项的管理记录，并同时删除对应的 Junction 目录？\n\n{names}"
+            msg = (f"确认删除以下 {len(entries)} 项的管理记录，并同时删除符号链接本身？\n"
+                   f"（仅删除链接，不影响真实数据）\n\n{names}")
         else:
-            msg = f"确认删除以下 {len(entries)} 项的管理记录？（Junction 目录不会被删除）\n\n{names}"
+            msg = f"确认删除以下 {len(entries)} 项的管理记录？（符号链接本身不会被删除）\n\n{names}"
         if not messagebox.askyesno("确认批量删除", msg, icon="warning", parent=self._win):
             return
         errors = []
@@ -608,7 +610,8 @@ class StatusWindow:
 
     def _build_entry_form(self, dlg: tk.Toplevel,
                           id_val="", desc_val="", target_val="", link_val="",
-                          id_readonly=False, new_link_layout=False):
+                          id_readonly=False, new_link_layout=False,
+                          replace_init=False, name_init=""):
         """Build the shared form for edit and new-entry dialogs.
 
         When new_link_layout is False (edit / offline-config), the link section is
@@ -655,9 +658,9 @@ class StatusWindow:
             desc_text.grid(row=3, column=0, sticky="ew", pady=(4, 0))
 
             # ── 符号链接位置：父目录 + 名称（或勾选「替换」时整目录），父:名 = 3:1 ──
-            replace_var = tk.BooleanVar(value=False)
+            replace_var = tk.BooleanVar(value=replace_init)
             parent_var  = tk.StringVar(value=link_val)
-            name_var    = tk.StringVar(value="")
+            name_var    = tk.StringVar(value=name_init)
 
             hdr = ttk.Frame(outer)
             hdr.grid(row=4, column=0, sticky="w", pady=(8, 0))
@@ -694,6 +697,7 @@ class StatusWindow:
                 name_entry.configure(
                     state="disabled" if replace_var.get() else "normal")
             replace_var.trace_add("write", _on_toggle_replace)
+            _on_toggle_replace()   # apply initial replace_init state (trace won't fire on init)
 
             def get_link() -> Path:
                 parent = parent_var.get().strip()
@@ -876,15 +880,43 @@ class StatusWindow:
 
     # ── New entry dialog ──────────────────────────────────────────────────────
 
-    def _open_new_dialog(self):
+    def open_new_link_dialog(self, **prefill):
+        """Public entry point (e.g. from the Explorer context menu).
+
+        Ensures the status window exists so the dialog has a valid parent,
+        then opens the new-link dialog with optional prefills:
+        target_val / link_parent / replace_init / name_init.
+
+        Invoked from a background tray process (Explorer is the active app),
+        so the dialog must force itself to the foreground.
+        """
+        if not (self._win and self._win.winfo_exists()):
+            self.show(self._entries)
+        # A transient child of a withdrawn/hidden owner may not be mapped at all,
+        # so make the owner visible and frontmost before opening the dialog.
+        self._win.deiconify()
+        self._win.lift()
+        self._win.focus_force()
+        self._open_new_dialog(bring_to_front=True, **prefill)
+
+    def _open_new_dialog(self, *, target_val="", link_parent="",
+                         replace_init=False, name_init="", bring_to_front=False):
         dlg = tk.Toplevel(self._win)
         dlg.title("新建链接")
         dlg.resizable(True, False)
         dlg.transient(self._win)
         dlg.grab_set()
+        if bring_to_front:
+            # Tray process isn't foreground when triggered from Explorer; force it up.
+            dlg.attributes("-topmost", True)
+            dlg.lift()
+            dlg.focus_force()
 
         outer, id_var, desc_text, target_var, link_var, link_ctl = \
-            self._build_entry_form(dlg, new_link_layout=True)
+            self._build_entry_form(
+                dlg, new_link_layout=True,
+                target_val=target_val, link_val=link_parent,
+                replace_init=replace_init, name_init=name_init)
 
         btn_row = ttk.Frame(outer)
         btn_row.grid(row=outer.grid_size()[1], column=0, columnspan=3,
@@ -924,7 +956,19 @@ class StatusWindow:
 
         ttk.Button(btn_row, text="取消", command=dlg.destroy, width=8).pack(side="right", padx=(6, 0))
         ttk.Button(btn_row, text="创建", command=do_create,   width=8).pack(side="right")
-        center_on_parent(dlg, self._win)
+        if bring_to_front:
+            # Center on screen (parent geometry may be unreliable when the
+            # tray process is not foreground), then re-assert front.
+            dlg.update_idletasks()
+            dw, dh = dlg.winfo_width(), dlg.winfo_height()
+            sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
+            dlg.geometry(f"+{max(0, (sw - dw) // 2)}+{max(0, (sh - dh) // 3)}")
+            dlg.lift()
+            dlg.focus_force()
+            logger.info("new-link dialog opened: geom=%s viewable=%s",
+                        dlg.winfo_geometry(), dlg.winfo_viewable())
+        else:
+            center_on_parent(dlg, self._win)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
