@@ -454,7 +454,7 @@ class App:
 
                 # Fallback
                 logging.warning("Junction gone, no rename/recovery found: %s", entry.id)
-                self._show_repair_dialog(entry, "链接已失效且无法自动定位，请手动更新链接路径或目标路径。")
+                self._show_repair_dialog(entry, "符号链接已失效且无法自动定位，请手动更新符号链接位置或符号链接指向。")
 
             # ── Target disappeared (OK → BROKEN) — possible cross-drive target move ──
             elif entry.status == Status.BROKEN and prev_entry and prev_entry.status == Status.OK:
@@ -465,7 +465,7 @@ class App:
                         self._do_explorer_recovery_target(entry, new_dir)
                         continue
 
-                self._show_repair_dialog(entry, "Target 目录已消失且无法自动定位，请手动更新目标路径。")
+                self._show_repair_dialog(entry, "符号链接指向的目标已消失且无法自动定位，请手动更新符号链接指向。")
 
             # ── Other new BROKEN entry (PENDING/MISSING → BROKEN, or brand-new) ──
             elif entry.status == Status.BROKEN and (not prev_entry or prev_entry.status != Status.BROKEN):
@@ -836,7 +836,7 @@ class App:
             if non_empty:
                 if not messagebox.askyesno(
                     "目录非空",
-                    f"链接路径已存在非空目录：\n{entry.link}\n\n删除其中所有内容并建立链接？",
+                    f"符号链接位置已存在非空目录：\n{entry.link}\n\n删除其中所有内容并建立链接？",
                     icon="warning", parent=self._root,
                 ):
                     return

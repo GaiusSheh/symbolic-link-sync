@@ -165,8 +165,8 @@ class ScanWindow:
         self._tree = tree
 
         tree.heading("时间",   text="修改时间", anchor="w")
-        tree.heading("链接路径", text="链接路径", anchor="w")
-        tree.heading("目标路径", text="目标路径", anchor="w")
+        tree.heading("链接路径", text="符号链接位置", anchor="w")
+        tree.heading("目标路径", text="符号链接指向", anchor="w")
 
         tree.column("时间",     width=140, stretch=False)
         tree.column("链接路径", width=420)

@@ -109,13 +109,14 @@ class StatusWindow:
         style.configure("Treeview.Heading", padding=(4, 6))
 
         cols = ("状态", "名称", "描述", "链接路径", "目标路径")
+        col_headings = {"链接路径": "符号链接位置", "目标路径": "符号链接指向"}
         tree = ttk.Treeview(win, columns=cols, show="headings", height=16,
                             selectmode="extended")
         self._tree = tree
 
         for col in cols:
             anchor = "center" if col == "状态" else "w"
-            tree.heading(col, text=col, anchor=anchor)
+            tree.heading(col, text=col_headings.get(col, col), anchor=anchor)
 
         tree.column("状态",   width=160, anchor="center", stretch=True)
         tree.column("名称",   width=170, anchor="w",      stretch=False)
@@ -340,10 +341,10 @@ class StatusWindow:
         target_ok = entry.target.exists()
 
         menu = tk.Menu(self._win, tearoff=0)
-        menu.add_command(label="查看链接",
+        menu.add_command(label="查看符号链接位置",
                          state="normal" if link_ok else "disabled",
                          command=lambda: self._open_in_explorer(entry.link))
-        menu.add_command(label="查看目标",
+        menu.add_command(label="查看符号链接指向",
                          state="normal" if target_ok else "disabled",
                          command=lambda: self._open_in_explorer(entry.target))
         menu.add_separator()
@@ -393,8 +394,8 @@ class StatusWindow:
         ref_tree = _ttk.Treeview(ref, columns=("机器", "链接", "目标"),
                                   show="headings", height=len(machine_entries))
         ref_tree.heading("机器", text="计算机", anchor="w")
-        ref_tree.heading("链接", text="链接路径", anchor="w")
-        ref_tree.heading("目标", text="目标路径", anchor="w")
+        ref_tree.heading("链接", text="符号链接位置", anchor="w")
+        ref_tree.heading("目标", text="符号链接指向", anchor="w")
         ref_tree.column("机器", width=120, stretch=False)
         ref_tree.column("链接", width=280)
         ref_tree.column("目标", width=280)
@@ -426,7 +427,7 @@ class StatusWindow:
         from core.symlink_manager import get_all_entry_ids
         conflict_ids = get_all_entry_ids()
 
-        _, id_var, desc_text, target_var, link_var = self._build_entry_form(
+        _, id_var, desc_text, target_var, link_var, _ = self._build_entry_form(
             dlg,
             id_val=entry_id,
             desc_val=pre_desc,
@@ -457,7 +458,7 @@ class StatusWindow:
             link_path   = Path(link_var.get().strip())
 
             if not eid or not str(target_path).strip() or not str(link_path).strip():
-                messagebox.showwarning("输入不完整", "名称、链接路径和目标路径均为必填。", parent=dlg)
+                messagebox.showwarning("输入不完整", "名称、符号链接位置和符号链接指向均为必填。", parent=dlg)
                 return
 
             if not force and link_path.exists() and not link_path.is_junction():
@@ -467,7 +468,7 @@ class StatusWindow:
                     non_empty = False
                 if non_empty:
                     if not messagebox.askyesno("路径已存在",
-                                               f"链接路径已存在非空目录：\n{link_path}\n\n删除并建立链接？",
+                                               f"符号链接位置已存在非空目录：\n{link_path}\n\n删除并建立链接？",
                                                icon="warning", parent=dlg):
                         return
                     confirm(force=True); return
@@ -515,9 +516,9 @@ class StatusWindow:
         outer.columnconfigure(1, weight=1)
 
         bases = _get_bases()
-        ttk_dlg.Label(outer, text="链接路径：", anchor="e").grid(row=0, column=0, sticky="e", padx=(0,8))
+        ttk_dlg.Label(outer, text="符号链接位置：", anchor="e").grid(row=0, column=0, sticky="e", padx=(0,8))
         ttk_dlg.Label(outer, text=_shorten(link_str, bases), anchor="w").grid(row=0, column=1, sticky="w")
-        ttk_dlg.Label(outer, text="目标路径：", anchor="e").grid(row=1, column=0, sticky="e", padx=(0,8))
+        ttk_dlg.Label(outer, text="符号链接指向：", anchor="e").grid(row=1, column=0, sticky="e", padx=(0,8))
         ttk_dlg.Label(outer, text=_shorten(target_str, bases), anchor="w").grid(row=1, column=1, sticky="w")
 
         ttk_dlg.Label(outer, text="名称（必填）：", anchor="e").grid(row=2, column=0, sticky="e", padx=(0,8), pady=(12,4))
@@ -607,64 +608,178 @@ class StatusWindow:
 
     def _build_entry_form(self, dlg: tk.Toplevel,
                           id_val="", desc_val="", target_val="", link_val="",
-                          id_readonly=False):
+                          id_readonly=False, new_link_layout=False):
         """Build the shared form for edit and new-entry dialogs.
-        Returns (outer, id_var, desc_text, target_var, link_var)."""
+
+        When new_link_layout is False (edit / offline-config), the link section is
+        a single path field. When True (new-entry dialog), it becomes a 父目录 +
+        名称 pair with a「替换以下目录」checkbox; ticking it greys out 名称 and
+        treats the selected directory itself as the link to be replaced.
+
+        Returns (outer, id_var, desc_text, target_var, link_var, link_ctl).
+        link_ctl is None for the single-field layout, or a dict with "get" and
+        "validate" callables for the parent+name layout.
+        """
         outer = ttk.Frame(dlg, padding=16)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(1, weight=1)
 
         def lbl(text, row, top=False):
-            ttk.Label(outer, text=text, anchor="e", width=8).grid(
+            ttk.Label(outer, text=text, anchor="e", width=12).grid(
                 row=row, column=0, sticky="ne" if top else "e",
                 padx=(0, 8), pady=(8, 0) if top else 4)
 
-        # 编号
-        lbl("编号", 0)
-        id_var = tk.StringVar(value=id_val)
-        id_entry = ttk.Entry(outer, textvariable=id_var, width=40,
-                             state="disabled" if id_readonly else "normal")
-        id_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=4)
+        link_ctl = None
+        name_var = None   # set in new layout; enables target-driven 名称 prefill
 
-        # 描述（多行）
-        lbl("描述", 1, top=True)
-        desc_text = tk.Text(outer, width=40, height=3, wrap="word",
-                            relief="solid", borderwidth=1)
-        desc_text.insert("1.0", desc_val)
-        desc_text.grid(row=1, column=1, columnspan=2, sticky="ew", pady=4)
+        if new_link_layout:
+            # 全栈式左对齐：每个标签独占一行、靠左，下方输入行全宽，左右边缘对齐。
+            outer.columnconfigure(0, weight=1)
 
-        # 链接路径
-        lbl("链接路径", 2)
-        link_var = tk.StringVar(value=link_val)
-        ttk.Entry(outer, textvariable=link_var, width=34).grid(
-            row=2, column=1, sticky="ew", pady=4)
+            def section_lbl(text, row, pady_top=8):
+                ttk.Label(outer, text=text).grid(
+                    row=row, column=0, sticky="w", pady=(pady_top, 0))
 
-        def browse_link():
-            cur = link_var.get()
-            init = str(Path(cur).parent) if cur and Path(cur).parent.exists() else "/"
-            p = filedialog.askdirectory(parent=dlg, title="选择链接路径（选中目录即为链接位置）", initialdir=init)
-            if p:
-                link_var.set(p)
+            # 编号
+            section_lbl("编号", 0, pady_top=0)
+            id_var = tk.StringVar(value=id_val)
+            ttk.Entry(outer, textvariable=id_var, width=40,
+                      state="disabled" if id_readonly else "normal").grid(
+                row=1, column=0, sticky="ew", pady=(4, 0))
 
-        ttk.Button(outer, text="浏览...", command=browse_link).grid(
-            row=2, column=2, padx=(6, 0), pady=4)
+            # 描述（多行）
+            section_lbl("描述", 2)
+            desc_text = tk.Text(outer, width=40, height=3, wrap="word",
+                                relief="solid", borderwidth=1)
+            desc_text.insert("1.0", desc_val)
+            desc_text.grid(row=3, column=0, sticky="ew", pady=(4, 0))
 
-        # 目标路径
-        lbl("目标路径", 3)
-        target_var = tk.StringVar(value=target_val)
-        ttk.Entry(outer, textvariable=target_var, width=34).grid(
-            row=3, column=1, sticky="ew", pady=4)
+            # ── 符号链接位置：父目录 + 名称（或勾选「替换」时整目录），父:名 = 3:1 ──
+            replace_var = tk.BooleanVar(value=False)
+            parent_var  = tk.StringVar(value=link_val)
+            name_var    = tk.StringVar(value="")
 
-        def browse_target():
-            init = str(Path(target_var.get()).parent) if target_var.get() else "/"
-            p = filedialog.askdirectory(parent=dlg, title="选择目标目录", initialdir=init)
-            if p:
-                target_var.set(p)
+            hdr = ttk.Frame(outer)
+            hdr.grid(row=4, column=0, sticky="w", pady=(8, 0))
+            ttk.Label(hdr, text="符号链接位置").pack(side="left")
+            ttk.Checkbutton(
+                hdr, variable=replace_var,
+                text="替换以下目录（⚠ 若目录非空，将删除原目录内容）",
+            ).pack(side="left", padx=(8, 0))
 
-        ttk.Button(outer, text="浏览...", command=browse_target).grid(
-            row=3, column=2, padx=(6, 0), pady=4)
+            link_in = ttk.Frame(outer)
+            link_in.grid(row=5, column=0, sticky="ew", pady=(4, 0))
+            # uniform 同组 + 最小请求宽度，使两列严格按权重 3:1 伸缩（否则 Entry
+            # 默认 ~20 字符的请求宽度会让两框基线相同、看起来等长）。
+            link_in.columnconfigure(0, weight=3, uniform="lk")   # 父目录
+            link_in.columnconfigure(2, weight=1, uniform="lk")   # 名称 → 3:1
+            ttk.Entry(link_in, textvariable=parent_var, width=1).grid(
+                row=0, column=0, sticky="ew")
+            ttk.Label(link_in, text="/").grid(row=0, column=1, padx=4)
+            name_entry = ttk.Entry(link_in, textvariable=name_var, width=1)
+            name_entry.grid(row=0, column=2, sticky="ew")
 
-        return outer, id_var, desc_text, target_var, link_var
+            def browse_link():
+                cur = parent_var.get()
+                init = cur if cur and Path(cur).exists() else "/"
+                title = "选择要替换的目录" if replace_var.get() else "选择父目录"
+                p = filedialog.askdirectory(parent=dlg, title=title, initialdir=init)
+                if p:
+                    parent_var.set(p)
+
+            ttk.Button(link_in, text="浏览...", command=browse_link).grid(
+                row=0, column=3, padx=(6, 0))
+
+            def _on_toggle_replace(*_):
+                name_entry.configure(
+                    state="disabled" if replace_var.get() else "normal")
+            replace_var.trace_add("write", _on_toggle_replace)
+
+            def get_link() -> Path:
+                parent = parent_var.get().strip()
+                if replace_var.get():
+                    return Path(parent)
+                return Path(parent) / name_var.get().strip()
+
+            def validate_link():
+                if not parent_var.get().strip():
+                    return ("请选择要替换的目录" if replace_var.get()
+                            else "请选择符号链接位置的父目录")
+                if not replace_var.get() and not name_var.get().strip():
+                    return "请填写符号链接名称"
+                return None
+
+            link_ctl = {"get": get_link, "validate": validate_link}
+            link_var = parent_var
+
+            # ── 符号链接指向（目标）：标签独占一行，输入行浏览靠右 ──────────────────
+            section_lbl("符号链接指向", 6)
+            tgt_in = ttk.Frame(outer)
+            tgt_in.grid(row=7, column=0, sticky="ew", pady=(4, 0))
+            tgt_in.columnconfigure(0, weight=1)
+            target_var = tk.StringVar(value=target_val)
+            ttk.Entry(tgt_in, textvariable=target_var).grid(
+                row=0, column=0, sticky="ew")
+
+            def browse_target():
+                init = str(Path(target_var.get()).parent) if target_var.get() else "/"
+                p = filedialog.askdirectory(
+                    parent=dlg, title="选择符号链接指向的目标目录", initialdir=init)
+                if p:
+                    target_var.set(p)
+                    # Prefill 名称 from the target folder name when blank
+                    if name_var is not None and not name_var.get().strip():
+                        name_var.set(Path(p).name)
+
+            ttk.Button(tgt_in, text="浏览...", command=browse_target).grid(
+                row=0, column=1, padx=(6, 0))
+        else:
+            # ── 单字段布局（编辑 / 离线配置）：右对齐标签 + 字段 ────────────────────
+            lbl("编号", 0)
+            id_var = tk.StringVar(value=id_val)
+            ttk.Entry(outer, textvariable=id_var, width=40,
+                      state="disabled" if id_readonly else "normal").grid(
+                row=0, column=1, columnspan=2, sticky="ew", pady=4)
+
+            lbl("描述", 1, top=True)
+            desc_text = tk.Text(outer, width=40, height=3, wrap="word",
+                                relief="solid", borderwidth=1)
+            desc_text.insert("1.0", desc_val)
+            desc_text.grid(row=1, column=1, columnspan=2, sticky="ew", pady=4)
+
+            lbl("符号链接位置", 2)
+            link_var = tk.StringVar(value=link_val)
+            ttk.Entry(outer, textvariable=link_var, width=34).grid(
+                row=2, column=1, sticky="ew", pady=4)
+
+            def browse_link():
+                cur = link_var.get()
+                init = str(Path(cur).parent) if cur and Path(cur).parent.exists() else "/"
+                p = filedialog.askdirectory(
+                    parent=dlg,
+                    title="选择符号链接位置（选中目录即为符号链接位置）", initialdir=init)
+                if p:
+                    link_var.set(p)
+
+            ttk.Button(outer, text="浏览...", command=browse_link).grid(
+                row=2, column=2, padx=(6, 0), pady=4)
+
+            lbl("符号链接指向", 3)
+            target_var = tk.StringVar(value=target_val)
+            ttk.Entry(outer, textvariable=target_var, width=34).grid(
+                row=3, column=1, sticky="ew", pady=4)
+
+            def browse_target():
+                init = str(Path(target_var.get()).parent) if target_var.get() else "/"
+                p = filedialog.askdirectory(
+                    parent=dlg, title="选择符号链接指向的目标目录", initialdir=init)
+                if p:
+                    target_var.set(p)
+
+            ttk.Button(outer, text="浏览...", command=browse_target).grid(
+                row=3, column=2, padx=(6, 0), pady=4)
+
+        return outer, id_var, desc_text, target_var, link_var, link_ctl
 
     # ── Edit dialog ───────────────────────────────────────────────────────────
 
@@ -675,7 +790,7 @@ class StatusWindow:
         dlg.transient(self._win)
         dlg.grab_set()
 
-        outer, id_var, desc_text, target_var, link_var = self._build_entry_form(
+        outer, id_var, desc_text, target_var, link_var, _ = self._build_entry_form(
             dlg,
             id_val=entry.id,
             desc_val=entry.description,
@@ -712,7 +827,7 @@ class StatusWindow:
                 if non_empty:
                     if not messagebox.askyesno(
                         "路径已存在",
-                        f"链接路径已存在非空目录：\n{new_link}\n\n删除其中所有内容并建立链接？",
+                        f"符号链接位置已存在非空目录：\n{new_link}\n\n删除其中所有内容并建立链接？",
                         icon="warning", parent=dlg,
                     ):
                         return
@@ -768,23 +883,29 @@ class StatusWindow:
         dlg.transient(self._win)
         dlg.grab_set()
 
-        outer, id_var, desc_text, target_var, link_var = self._build_entry_form(dlg)
+        outer, id_var, desc_text, target_var, link_var, link_ctl = \
+            self._build_entry_form(dlg, new_link_layout=True)
 
         btn_row = ttk.Frame(outer)
-        btn_row.grid(row=4, column=0, columnspan=3, sticky="e", pady=(12, 0))
+        btn_row.grid(row=outer.grid_size()[1], column=0, columnspan=3,
+                     sticky="e", pady=(12, 0))
 
         def do_create(force: bool = False):
             entry_id = id_var.get().strip()
             desc     = desc_text.get("1.0", "end-1c").strip()
             target   = link_var_path(target_var)
-            link     = link_var_path(link_var)
 
             if not entry_id:
                 messagebox.showwarning("无效输入", "编号不能为空", parent=dlg)
                 return
-            if not str(target).strip() or not str(link).strip():
-                messagebox.showwarning("无效输入", "目标路径和链接路径不能为空", parent=dlg)
+            link_err = link_ctl["validate"]()
+            if link_err:
+                messagebox.showwarning("无效输入", link_err, parent=dlg)
                 return
+            if not str(target).strip():
+                messagebox.showwarning("无效输入", "符号链接指向不能为空", parent=dlg)
+                return
+            link = link_ctl["get"]()
 
             ok, err = create_entry(entry_id, desc, link, target, force_overwrite=force)
             if ok:
@@ -793,7 +914,7 @@ class StatusWindow:
             elif err == ERR_LINK_NONEMPTY:
                 if messagebox.askyesno(
                     "目录非空",
-                    f"链接路径\n{link_var.get()}\n已存在且不为空。\n\n继续将删除该目录中的所有内容，确认？",
+                    f"符号链接位置\n{link}\n已存在且不为空。\n\n继续将删除该目录中的所有内容，确认？",
                     icon="warning",
                     parent=dlg,
                 ):
