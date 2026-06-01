@@ -13,7 +13,7 @@ from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa:
                                    create_entry, delete_entry, edit_entry,
                                    get_scanned, get_machine_config,
                                    get_other_machines_local_entries,
-                                   get_ignored_entries)
+                                   get_ignored_entries, path_present)
 from ui.utils import center_window, center_on_parent, iid_escape, iid_unescape, shorten_path
 
 _STATUS_LABEL = {
@@ -337,8 +337,10 @@ class StatusWindow:
         entry = next((e for e in self._entries if e.id == item), None)
         if not entry:
             return
-        link_ok   = os.path.lexists(entry.link)
-        target_ok = entry.target.exists()
+        # Use path_present (not os.path.lexists): a nested-junction path can raise
+        # WinError 448 and lexists would wrongly report it absent → menu greyed out.
+        link_ok   = path_present(entry.link)
+        target_ok = path_present(entry.target)
 
         menu = tk.Menu(self._win, tearoff=0)
         menu.add_command(label="查看符号链接位置",

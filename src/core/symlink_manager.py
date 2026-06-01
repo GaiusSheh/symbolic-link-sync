@@ -649,28 +649,35 @@ def _remove_link(link: Path) -> tuple[bool, str]:
 
 # ── Status detection ──────────────────────────────────────────────────────────
 
-def _detect_status(link: Path, target: Path) -> Status:
-    # CRITICAL: filesystem probes here can raise OSError on a single bad path —
-    # esp. WinError 448 "untrusted mount point" when the link path traverses a
-    # nested junction (junction-inside-junction / OneDrive placeholder not yet
-    # hydrated). We must distinguish "truly absent" from "can't traverse":
-    #   * os.path.lexists() SWALLOWS the 448 and returns False → would wrongly
-    #     mark the entry PENDING (待建) and trigger a doomed create. So use
-    #     os.lstat and inspect the error type instead.
-    #   * A non-"not found" OSError means the path isn't missing, just
-    #     unverifiable → assume OK; never mark PENDING/BROKEN over it.
+def path_present(p) -> bool:
+    """True unless the path is *definitively* absent.
+
+    os.path.lexists() swallows every OSError and returns False, so an
+    unreadable path — e.g. WinError 448 "untrusted mount point" on a nested
+    junction (junction-inside-junction / unhydrated OneDrive placeholder) —
+    looks "missing" and gets wrongly marked PENDING (待建). Here only
+    FileNotFoundError counts as absent; any other OSError means
+    present-but-unverifiable → True. Use this instead of os.path.lexists for
+    link/target presence checks.
+    """
     try:
-        try:
-            os.lstat(str(link))          # traverses intermediate junctions
-        except FileNotFoundError:
+        os.lstat(str(p))
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+
+
+def _detect_status(link: Path, target: Path) -> Status:
+    # Distinguish "truly absent" from "can't traverse" (see path_present).
+    try:
+        if not path_present(link):
             try:
                 return Status.PENDING if target.exists() else Status.MISSING
             except OSError:
                 return Status.MISSING
-        except OSError:
-            return Status.OK             # e.g. WinError 448 — present but untraversable
-
-        # Link path exists — classify it. A junction/symlink is OK if it resolves.
+        # Link path is present (or present-but-unverifiable). Classify it.
         try:
             if link.is_junction() or link.is_symlink():
                 try:
