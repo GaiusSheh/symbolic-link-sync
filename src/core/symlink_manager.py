@@ -646,16 +646,32 @@ def _remove_link(link: Path) -> tuple[bool, str]:
 # ── Status detection ──────────────────────────────────────────────────────────
 
 def _detect_status(link: Path, target: Path) -> Status:
-    if not os.path.lexists(link):
-        return Status.PENDING if target.exists() else Status.MISSING
+    # Every filesystem probe below can raise OSError on a single bad path
+    # (e.g. WinError 448 "untrusted mount point" on nested OneDrive reparse
+    # points). One bad link must never crash check_all / sync / the window —
+    # so failures are contained per-entry.
+    try:
+        if not os.path.lexists(link):
+            try:
+                return Status.PENDING if target.exists() else Status.MISSING
+            except OSError:
+                return Status.MISSING
 
-    # Something is at the link path — only treat it as OK/BROKEN if it's actually
-    # a junction or symlink. A plain directory is not a valid junction.
-    if link.is_junction() or link.is_symlink():
-        return Status.OK if link.exists() else Status.BROKEN
+        # Something is at the link path — only treat it as OK/BROKEN if it's
+        # actually a junction or symlink. A plain directory is not a valid junction.
+        if link.is_junction() or link.is_symlink():
+            try:
+                return Status.OK if link.exists() else Status.BROKEN
+            except OSError:
+                # The reparse point is physically present but can't be traversed
+                # right now (cloud/security state). Treat as OK — it exists and
+                # must not be torn down/rebuilt over a transient access error.
+                return Status.OK
 
-    # Regular file or directory sitting where the junction should be → broken
-    return Status.BROKEN
+        # Regular file or directory sitting where the junction should be → broken
+        return Status.BROKEN
+    except OSError:
+        return Status.BROKEN
 
 
 # ── Public read API ───────────────────────────────────────────────────────────

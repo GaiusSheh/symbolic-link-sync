@@ -41,11 +41,17 @@ Name: "{group}\卸载 {#AppName}"; Filename: "{uninstallexe}"
 
 [Tasks]
 Name: "addtopath"; Description: "把命令行工具 symlisync 加入 PATH（供脚本/AI 代理调用）"; Flags: checkedonce
+Name: "autostart"; Description: "开机时自动启动 SymLiSync（后台托盘运行）"
 
 [Registry]
 ; Append {app} to the user PATH (only when not already present and the task is selected)
 Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; \
     ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NeedsAddPath('{app}')
+; Autostart: write the same HKCU Run value the app's settings use (name "SymLiSync"),
+; so the in-app「开机自启」checkbox stays in sync. Removed on uninstall.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; \
+    ValueName: "SymLiSync"; ValueData: """{app}\{#AppExe}"""; Tasks: autostart; \
+    Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "立即启动 {#AppName}"; Flags: nowait postinstall skipifsilent
