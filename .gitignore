@@ -8,7 +8,8 @@ build/
 src/__pycache__/
 src/core/__pycache__/
 src/ui/__pycache__/
-src/*.spec
+*.spec
+# Inno Setup installer now outputs to dist/ (already ignored above)
 
 # Runtime state / logs
 SymLiSync.log

@@ -223,12 +223,19 @@ class App:
             return
         try:
             while True:
-                msg = self._q.get_nowait()
-                self._handle(msg)
-        except queue.Empty:
-            pass
-        if not self._quitting:
-            self._root.after(_POLL_MS, self._poll)
+                try:
+                    msg = self._q.get_nowait()
+                except queue.Empty:
+                    break
+                # A failing handler must never kill the poll loop, or the tray
+                # ("show window") and all further events would stop working.
+                try:
+                    self._handle(msg)
+                except Exception:
+                    logging.exception("handler failed for %r", msg)
+        finally:
+            if not self._quitting:
+                self._root.after(_POLL_MS, self._poll)
 
     def _handle(self, msg):
         kind = msg[0]
@@ -422,11 +429,15 @@ class App:
 
     def _refresh_ui(self):
         """Update tray, window, and watcher dirs from current self._entries."""
+        logging.info("refresh_ui: tray.update...")
         self._tray.update(self._entries, self._last_sync, self._next_check_time(),
                           confirmed_empty=self._confirmed_empty)
+        logging.info("refresh_ui: window...")
         self._window.set_confirmed_empty(self._confirmed_empty)
         self._window.refresh(self._entries)
+        logging.info("refresh_ui: update_watch_dirs...")
         self._watcher.update_watch_dirs(mgr.collect_watch_dirs(self._entries))
+        logging.info("refresh_ui: done")
 
     def _do_smart_sync(self):
         known_ids = {e.id for e in self._entries}
@@ -450,12 +461,22 @@ class App:
         nd, np = mgr.normalize_entries()
         if nd or np:
             logging.info("normalize_entries: %d demoted, %d promoted", nd, np)
+        logging.info("sync: sync_all...")
         result = mgr.sync_all()
         self._last_sync = datetime.now()
+        logging.info("sync: check_all...")
         self._entries = mgr.check_all()
         self._prune_confirmed_empty()
+        # Show the window before the watcher setup below: scheduling a recursive
+        # watch on a busy cloud root (OneDrive) can block, and we never want that
+        # to leave the user with no window.
+        if reason == "startup":
+            self._do_open_window()
+        logging.info("sync: refresh_ui...")
         self._refresh_ui()
+        logging.info("sync: refresh_machine_drives...")
         mgr.refresh_machine_drives()
+        logging.info("sync: update_drive_roots...")
         self._watcher.update_drive_roots(mgr.get_machine_drives())
 
         logging.info("Sync done: %d created, %d skipped, %d failed, %d broken",
@@ -465,9 +486,6 @@ class App:
         if result.broken:
             ids = ", ".join(result.broken)
             send_toast(title=f"SymLiSync:{len(result.broken)} 个断链", body=ids)
-
-        if reason == "startup":
-            self._do_open_window()
 
     def _do_repath(self, old_path: str, new_path: str):
         logging.info("Dir moved: %s → %s", old_path, new_path)
