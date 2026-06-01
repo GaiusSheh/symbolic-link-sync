@@ -29,3 +29,13 @@ $pyi    = "$venv\Scripts\pyinstaller.exe"
     --workpath "$PSScriptRoot\build" `
     --specpath "$PSScriptRoot" `
     "$srcDir\cli.py"
+
+# ── Installer (compile after the exes so the setup always bundles fresh ones) ──
+# Skipped if Inno Setup (ISCC) isn't installed.
+$iscc = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+if (-not (Test-Path $iscc)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+if (Test-Path $iscc) {
+    & $iscc "$PSScriptRoot\installer\SymLiSync.iss"
+} else {
+    Write-Host "ISCC not found - skipping installer build (exes are in dist/)."
+}
