@@ -593,7 +593,11 @@ def _decode(b: bytes) -> str:
 
 
 def _create_junction(link: Path, target: Path) -> tuple[bool, str]:
-    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # e.g. WinError 448 traversing a nested junction in the link's parent
+        return False, f"无法创建父目录: {e}"
     # shell=True + quoted paths: the only reliable way to pass mklink via cmd
     cmd = f'mklink /J "{link}" "{target}"'
     r   = subprocess.run(cmd, shell=True, capture_output=True,
@@ -739,31 +743,36 @@ def get_ignored_entries() -> list[dict]:
 def sync_all() -> SyncResult:
     result = SyncResult()
     for entry in check_all():
-        if entry.status == Status.OK:
-            result.skipped.append(entry.id)
-        elif entry.status == Status.BROKEN:
-            if entry.target.exists():
-                # Target is reachable per config; rebuild the broken junction.
-                if os.path.lexists(entry.link):
-                    ok_rm, _ = _remove_link(entry.link)
-                    if not ok_rm:
+        # A single bad link (e.g. WinError 448 on a nested junction) must never
+        # abort the whole sync — contain failures per entry.
+        try:
+            if entry.status == Status.OK:
+                result.skipped.append(entry.id)
+            elif entry.status == Status.BROKEN:
+                if entry.target.exists():
+                    # Target is reachable per config; rebuild the broken junction.
+                    if os.path.lexists(entry.link):
+                        ok_rm, _ = _remove_link(entry.link)
+                        if not ok_rm:
+                            result.failed.append(entry.id)
+                            continue
+                    ok, _ = _create_junction(entry.link, entry.target)
+                    if ok:
+                        result.created.append(entry.id)
+                    else:
                         result.failed.append(entry.id)
-                        continue
+                else:
+                    result.broken.append(entry.id)
+            elif entry.status == Status.MISSING:
+                result.skipped.append(entry.id)
+            elif entry.status == Status.PENDING:
                 ok, _ = _create_junction(entry.link, entry.target)
                 if ok:
                     result.created.append(entry.id)
                 else:
                     result.failed.append(entry.id)
-            else:
-                result.broken.append(entry.id)
-        elif entry.status == Status.MISSING:
-            result.skipped.append(entry.id)
-        elif entry.status == Status.PENDING:
-            ok, _ = _create_junction(entry.link, entry.target)
-            if ok:
-                result.created.append(entry.id)
-            else:
-                result.failed.append(entry.id)
+        except OSError:
+            result.failed.append(entry.id)
     return result
 
 

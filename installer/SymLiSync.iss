@@ -25,8 +25,9 @@ UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Auto-close the running tray app (via Restart Manager) before replacing/removing files
-CloseApplications=yes
+; Restart Manager can't close our hidden tray window, so we taskkill it
+; explicitly in code (PrepareToInstall / uninstall) instead.
+CloseApplications=no
 
 [Languages]
 Name: "chs"; MessagesFile: "ChineseSimplified.isl"
@@ -62,6 +63,24 @@ Filename: "{app}\{#AppExe}"; Description: "立即启动 {#AppName}"; Flags: nowa
 Filename: "{app}\{#CliExe}"; Parameters: "cleanup"; RunOnceId: "SymLiSyncCleanup"; Flags: runhidden
 
 [Code]
+procedure KillRunning;
+var
+  rc: Integer;
+begin
+  // Force-close the running tray + CLI so files aren't locked during
+  // install/uninstall. The app has no unsaved state, so this is safe.
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /t /im SymLiSync-Tray.exe',
+       '', SW_HIDE, ewWaitUntilTerminated, rc);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im symlisync.exe',
+       '', SW_HIDE, ewWaitUntilTerminated, rc);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  KillRunning;
+  Result := '';
+end;
+
 function NeedsAddPath(Param: string): Boolean;
 var
   OrigPath: string;
@@ -102,6 +121,7 @@ var
 begin
   if CurUninstallStep = usUninstall then
   begin
+    KillRunning;   // close the tray first so its exe isn't locked
     RemovePath(ExpandConstant('{app}'));
     // Let the user decide whether to keep their data (symlinks config, settings).
     // Default button = "是" (keep); choosing "否" deletes the data folder.

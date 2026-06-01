@@ -625,38 +625,32 @@ class StatusWindow:
         """
         outer = ttk.Frame(dlg, padding=16)
         outer.pack(fill="both", expand=True)
-        outer.columnconfigure(1, weight=1)
+        # Full-stack, left-aligned layout for every dialog: each label on its own
+        # row, the input row below it spanning full width.
+        outer.columnconfigure(0, weight=1)
 
-        def lbl(text, row, top=False):
-            ttk.Label(outer, text=text, anchor="e", width=12).grid(
-                row=row, column=0, sticky="ne" if top else "e",
-                padx=(0, 8), pady=(8, 0) if top else 4)
+        def section_lbl(text, row, pady_top=8):
+            ttk.Label(outer, text=text).grid(
+                row=row, column=0, sticky="w", pady=(pady_top, 0))
 
         link_ctl = None
         name_var = None   # set in new layout; enables target-driven 名称 prefill
 
+        # 编号
+        section_lbl("编号", 0, pady_top=0)
+        id_var = tk.StringVar(value=id_val)
+        ttk.Entry(outer, textvariable=id_var, width=40,
+                  state="disabled" if id_readonly else "normal").grid(
+            row=1, column=0, sticky="ew", pady=(4, 0))
+
+        # 描述（多行）
+        section_lbl("描述", 2)
+        desc_text = tk.Text(outer, width=40, height=3, wrap="word",
+                            relief="solid", borderwidth=1)
+        desc_text.insert("1.0", desc_val)
+        desc_text.grid(row=3, column=0, sticky="ew", pady=(4, 0))
+
         if new_link_layout:
-            # 全栈式左对齐：每个标签独占一行、靠左，下方输入行全宽，左右边缘对齐。
-            outer.columnconfigure(0, weight=1)
-
-            def section_lbl(text, row, pady_top=8):
-                ttk.Label(outer, text=text).grid(
-                    row=row, column=0, sticky="w", pady=(pady_top, 0))
-
-            # 编号
-            section_lbl("编号", 0, pady_top=0)
-            id_var = tk.StringVar(value=id_val)
-            ttk.Entry(outer, textvariable=id_var, width=40,
-                      state="disabled" if id_readonly else "normal").grid(
-                row=1, column=0, sticky="ew", pady=(4, 0))
-
-            # 描述（多行）
-            section_lbl("描述", 2)
-            desc_text = tk.Text(outer, width=40, height=3, wrap="word",
-                                relief="solid", borderwidth=1)
-            desc_text.insert("1.0", desc_val)
-            desc_text.grid(row=3, column=0, sticky="ew", pady=(4, 0))
-
             # ── 符号链接位置：父目录 + 名称（或勾选「替换」时整目录），父:名 = 3:1 ──
             replace_var = tk.BooleanVar(value=replace_init)
             parent_var  = tk.StringVar(value=link_val)
@@ -684,7 +678,10 @@ class StatusWindow:
 
             def browse_link():
                 cur = parent_var.get()
-                init = cur if cur and Path(cur).exists() else "/"
+                try:
+                    init = cur if cur and Path(cur).exists() else "/"
+                except OSError:
+                    init = "/"   # nested-junction paths can raise WinError 448
                 title = "选择要替换的目录" if replace_var.get() else "选择父目录"
                 p = filedialog.askdirectory(parent=dlg, title=title, initialdir=init)
                 if p:
@@ -738,40 +735,35 @@ class StatusWindow:
             ttk.Button(tgt_in, text="浏览...", command=browse_target).grid(
                 row=0, column=1, padx=(6, 0))
         else:
-            # ── 单字段布局（编辑 / 离线配置）：右对齐标签 + 字段 ────────────────────
-            lbl("编号", 0)
-            id_var = tk.StringVar(value=id_val)
-            ttk.Entry(outer, textvariable=id_var, width=40,
-                      state="disabled" if id_readonly else "normal").grid(
-                row=0, column=1, columnspan=2, sticky="ew", pady=4)
-
-            lbl("描述", 1, top=True)
-            desc_text = tk.Text(outer, width=40, height=3, wrap="word",
-                                relief="solid", borderwidth=1)
-            desc_text.insert("1.0", desc_val)
-            desc_text.grid(row=1, column=1, columnspan=2, sticky="ew", pady=4)
-
-            lbl("符号链接位置", 2)
+            # ── 单字段布局（编辑 / 离线配置）：同样全栈式左对齐，仅一个完整路径框 ──
+            section_lbl("符号链接位置", 4)
             link_var = tk.StringVar(value=link_val)
-            ttk.Entry(outer, textvariable=link_var, width=34).grid(
-                row=2, column=1, sticky="ew", pady=4)
+            link_in = ttk.Frame(outer)
+            link_in.grid(row=5, column=0, sticky="ew", pady=(4, 0))
+            link_in.columnconfigure(0, weight=1)
+            ttk.Entry(link_in, textvariable=link_var).grid(row=0, column=0, sticky="ew")
 
             def browse_link():
                 cur = link_var.get()
-                init = str(Path(cur).parent) if cur and Path(cur).parent.exists() else "/"
+                try:
+                    init = str(Path(cur).parent) if cur and Path(cur).parent.exists() else "/"
+                except OSError:
+                    init = "/"   # nested-junction paths can raise WinError 448
                 p = filedialog.askdirectory(
                     parent=dlg,
                     title="选择符号链接位置（选中目录即为符号链接位置）", initialdir=init)
                 if p:
                     link_var.set(p)
 
-            ttk.Button(outer, text="浏览...", command=browse_link).grid(
-                row=2, column=2, padx=(6, 0), pady=4)
+            ttk.Button(link_in, text="浏览...", command=browse_link).grid(
+                row=0, column=1, padx=(6, 0))
 
-            lbl("符号链接指向", 3)
+            section_lbl("符号链接指向", 6)
             target_var = tk.StringVar(value=target_val)
-            ttk.Entry(outer, textvariable=target_var, width=34).grid(
-                row=3, column=1, sticky="ew", pady=4)
+            tgt_in = ttk.Frame(outer)
+            tgt_in.grid(row=7, column=0, sticky="ew", pady=(4, 0))
+            tgt_in.columnconfigure(0, weight=1)
+            ttk.Entry(tgt_in, textvariable=target_var).grid(row=0, column=0, sticky="ew")
 
             def browse_target():
                 init = str(Path(target_var.get()).parent) if target_var.get() else "/"
@@ -780,8 +772,8 @@ class StatusWindow:
                 if p:
                     target_var.set(p)
 
-            ttk.Button(outer, text="浏览...", command=browse_target).grid(
-                row=3, column=2, padx=(6, 0), pady=4)
+            ttk.Button(tgt_in, text="浏览...", command=browse_target).grid(
+                row=0, column=1, padx=(6, 0))
 
         return outer, id_var, desc_text, target_var, link_var, link_ctl
 
@@ -803,7 +795,8 @@ class StatusWindow:
         )
 
         btn_row = ttk.Frame(outer)
-        btn_row.grid(row=4, column=0, columnspan=3, sticky="e", pady=(12, 0))
+        btn_row.grid(row=outer.grid_size()[1], column=0, columnspan=3,
+                     sticky="e", pady=(12, 0))
 
         def confirm():
             new_id     = id_var.get().strip()
