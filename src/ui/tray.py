@@ -9,7 +9,9 @@ import pystray
 from PIL import Image
 
 from ui.icons import tray_icon
-from core.symlink_manager import Status, get_scanned, get_other_machines_local_entries
+from core.symlink_manager import (Status, get_scanned,
+                                   get_other_machines_local_entries,
+                                   get_ignored_offline)
 
 
 def _status_color(entries, confirmed_empty: set[str]) -> str:
@@ -26,7 +28,10 @@ def _status_color(entries, confirmed_empty: set[str]) -> str:
            for s in get_scanned()):
         return "yellow"
     # Offline entries not yet configured on this machine → yellow
-    if any(eid not in my_ids for eid in get_other_machines_local_entries()):
+    # (exclude ones the user has 本机忽略, matching the offline section's filter)
+    ignored_offline = get_ignored_offline()
+    if any(eid not in my_ids and eid not in ignored_offline
+           for eid in get_other_machines_local_entries()):
         return "yellow"
     return "green"
 
