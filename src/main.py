@@ -483,7 +483,17 @@ class App:
                      len(result.created), len(result.skipped),
                      len(result.failed), len(result.broken))
 
-        if result.broken:
+        if reason == "manual":
+            # Manual「立即同步」always gives feedback (otherwise it looks like nothing happened).
+            parts = [f"{len(result.skipped)} 正常"]
+            if result.created:
+                parts.append(f"{len(result.created)} 已重建")
+            if result.failed:
+                parts.append(f"{len(result.failed)} 失败")
+            if result.broken:
+                parts.append(f"{len(result.broken)} 断链")
+            send_toast("SymLiSync:同步完成", "、".join(parts))
+        elif result.broken:
             ids = ", ".join(result.broken)
             send_toast(title=f"SymLiSync:{len(result.broken)} 个断链", body=ids)
 

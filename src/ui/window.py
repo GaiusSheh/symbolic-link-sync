@@ -70,11 +70,24 @@ class StatusWindow:
         self._entries = entries
         if self._win and self._win.winfo_exists():
             self._populate(entries)
-            self._win.deiconify()
-            self._win.lift()
-            self._win.focus_force()
+            self._bring_to_front()
             return
         self._build(entries)
+
+    def _bring_to_front(self):
+        """Force the window above others even when the tray process isn't the
+        foreground app (e.g. opened by a left-click on the tray icon, which —
+        unlike pystray's right-click — does not SetForegroundWindow). The brief
+        topmost toggle lifts it without requiring foreground rights."""
+        win = self._win
+        if not (win and win.winfo_exists()):
+            return
+        win.deiconify()
+        win.lift()
+        win.attributes("-topmost", True)
+        win.update_idletasks()
+        win.attributes("-topmost", False)
+        win.focus_force()
 
     def refresh(self, entries: list[LinkEntry]):
         self._entries = entries
@@ -164,6 +177,7 @@ class StatusWindow:
 
         self._populate(entries)
         center_window(win)
+        self._bring_to_front()
 
     def _populate(self, entries: list[LinkEntry]):
         tree = self._tree
@@ -343,6 +357,9 @@ class StatusWindow:
         target_ok = path_present(entry.target)
 
         menu = tk.Menu(self._win, tearoff=0)
+        menu.add_command(label="编辑...",
+                         command=lambda: self._open_edit_dialog(entry))
+        menu.add_separator()
         menu.add_command(label="查看符号链接位置",
                          state="normal" if link_ok else "disabled",
                          command=lambda: self._open_in_explorer(entry.link))
