@@ -13,7 +13,9 @@ from core.symlink_manager import (ERR_LINK_NONEMPTY, LinkEntry, Status,  # noqa:
                                    create_entry, delete_entry, edit_entry,
                                    get_scanned, get_machine_config,
                                    get_other_machines_local_entries,
-                                   get_ignored_entries, path_present)
+                                   get_ignored_entries, path_present,
+                                   get_ignored_offline, ignore_offline,
+                                   unignore_offline, delete_entry_all_machines)
 from ui.utils import center_window, center_on_parent, iid_escape, iid_unescape, shorten_path
 
 _STATUS_LABEL = {
@@ -52,6 +54,7 @@ class StatusWindow:
             "local":   False,
             "scan":    False,
             "offline": False,
+            "offline_ignored": True,
         }
 
     # ── Public API ───────────────────────────────────────────────────────────
@@ -250,9 +253,11 @@ class StatusWindow:
                                 tags=("unmanaged_scan",))
 
         # ── 离线配置 ──────────────────────────────────────────────────────────
-        my_ids  = {e.id for e in entries}
-        other   = get_other_machines_local_entries()
-        pending = {eid: ml for eid, ml in other.items() if eid not in my_ids}
+        my_ids   = {e.id for e in entries}
+        other    = get_other_machines_local_entries()
+        ignored  = get_ignored_offline()
+        pending  = {eid: ml for eid, ml in other.items()
+                    if eid not in my_ids and eid not in ignored}
         if pending:
             _sep("__offline_sep__", "offline", "离线配置", len(pending))
             if not self._collapsed.get("offline", False):
@@ -261,6 +266,19 @@ class StatusWindow:
                     tree.insert("", "end", iid=f"offline::{eid}",
                                 values=("□ 待配置", eid, machines_str, "", ""),
                                 tags=("offline_pending",))
+
+        # ── 已忽略的离线条目（默认折叠；右键可取消忽略）────────────────────────
+        ign_pending = {eid: ml for eid, ml in other.items()
+                       if eid in ignored and eid not in my_ids}
+        if ign_pending:
+            _sep("__offline_ignored_sep__", "offline_ignored",
+                 "已忽略的离线条目", len(ign_pending))
+            if not self._collapsed.get("offline_ignored", True):
+                for eid, machine_entries in sorted(ign_pending.items()):
+                    machines_str = "、".join(e["_machine"] for e in machine_entries)
+                    tree.insert("", "end", iid=f"offign::{eid}",
+                                values=("🚫 已忽略", eid, machines_str, "", ""),
+                                tags=("offline_done",))
 
     # ── Actions ──────────────────────────────────────────────────────────────
 
@@ -271,6 +289,7 @@ class StatusWindow:
             "__local_sep__":   "local",
             "__scan_sep__":    "scan",
             "__offline_sep__": "offline",
+            "__offline_ignored_sep__": "offline_ignored",
         }
         if item in sep_map:
             key = sep_map[item]
@@ -291,7 +310,7 @@ class StatusWindow:
 
     def _on_double_click(self, event):
         item = self._tree.identify_row(event.y)
-        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__", "__offline_ignored_sep__"}
         if not item or item in _seps or item.startswith("ignored::"):
             return
         if item.startswith("scan::"):
@@ -306,7 +325,7 @@ class StatusWindow:
 
     def _on_right_click(self, event):
         item = self._tree.identify_row(event.y)
-        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__", "__offline_ignored_sep__"}
         if not item or item in _seps or item.startswith("ignored::"):
             return
 
@@ -320,6 +339,7 @@ class StatusWindow:
             if iid not in _seps
             and not iid.startswith("scan::")
             and not iid.startswith("offline::")
+            and not iid.startswith("offign::")
             and not iid.startswith("ignored::")
         ]
         selected_entries = [e for e in self._entries if e.id in set(selected_ids)]
@@ -346,6 +366,20 @@ class StatusWindow:
             menu = tk.Menu(self._win, tearoff=0)
             menu.add_command(label="配置到本机...",
                              command=lambda: self._open_offline_entry_dialog(entry_id))
+            menu.add_separator()
+            menu.add_command(label="本机忽略",
+                             command=lambda: self._ignore_offline(entry_id))
+            menu.add_command(label="在所有设备删除",
+                             command=lambda: self._delete_all_machines(entry_id, remove_junction=False))
+            menu.tk_popup(event.x_root, event.y_root)
+            return
+        if item.startswith("offign::"):
+            entry_id = item.removeprefix("offign::")
+            menu = tk.Menu(self._win, tearoff=0)
+            menu.add_command(label="取消忽略",
+                             command=lambda: self._unignore_offline(entry_id))
+            menu.add_command(label="在所有设备删除",
+                             command=lambda: self._delete_all_machines(entry_id, remove_junction=False))
             menu.tk_popup(event.x_root, event.y_root)
             return
         entry = next((e for e in self._entries if e.id == item), None)
@@ -374,6 +408,9 @@ class StatusWindow:
                          command=lambda: self._delete_entry(entry, remove_junction=False))
         menu.add_command(label="删除管理和符号链接",
                          command=lambda: self._delete_entry(entry, remove_junction=True))
+        menu.add_separator()
+        menu.add_command(label="在所有设备删除",
+                         command=lambda: self._delete_all_machines(entry.id, remove_junction=True))
         menu.tk_popup(event.x_root, event.y_root)
 
     def _scan_context_menu(self, event, iid):
@@ -387,6 +424,31 @@ class StatusWindow:
         menu.add_command(label="不管理",
                          command=lambda: self._do_ignore_scan(link_str, target_str, iid))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _ignore_offline(self, entry_id: str):
+        """Hide an offline entry on this machine (it stays defined on others)."""
+        ignore_offline(entry_id)
+        self._on_refresh_needed()
+
+    def _unignore_offline(self, entry_id: str):
+        """Un-hide a 本机忽略 offline entry → back to 离线配置."""
+        unignore_offline(entry_id)
+        self._on_refresh_needed()
+
+    def _delete_all_machines(self, entry_id: str, remove_junction: bool = False):
+        """Erase the entry from symlinks.json on all devices (global + every
+        machine's local_data)."""
+        extra = "\n（本机的符号链接也会一并删除。）" if remove_junction else ""
+        if not messagebox.askyesno(
+            "在所有设备删除",
+            f"确认从所有设备的配置中彻底删除「{entry_id}」？\n\n"
+            f"其他设备同步后将不再管理或重建它；其上已建好的链接会变为「未托管」，"
+            f"但不会被删除。{extra}",
+            icon="warning", parent=self._win,
+        ):
+            return
+        delete_entry_all_machines(entry_id, remove_junction=remove_junction)
+        self._on_refresh_needed()
 
     def _open_offline_entry_dialog(self, entry_id: str):
         """Show per-machine configs for an offline entry and allow configuring locally."""
@@ -577,7 +639,9 @@ class StatusWindow:
 
     def _open_in_explorer(self, path):
         import subprocess
-        target = path if path.exists() else path.parent
+        # path.exists() can raise WinError 448 on a nested-junction path → would
+        # crash and open nothing. path_present treats "can't traverse" as present.
+        target = path if path_present(path) else path.parent
         subprocess.run(f'explorer /select,"{target}"', shell=True)
 
     def _delete_entry(self, entry, remove_junction: bool = True):
@@ -613,7 +677,7 @@ class StatusWindow:
         self._on_refresh_needed()
 
     def _on_delete_key(self, _event):
-        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__"}
+        _seps = {"__scan_sep__", "__offline_sep__", "__local_sep__", "__ignored_sep__", "__offline_ignored_sep__"}
         selected_entries = [
             e for e in self._entries
             if e.id in self._tree.selection() and e.id not in _seps

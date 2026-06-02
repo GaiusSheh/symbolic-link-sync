@@ -90,6 +90,37 @@ def get_other_machines_local_entries() -> dict[str, list[dict]]:
     return result
 
 
+def get_ignored_offline() -> set[str]:
+    """Offline-entry ids this machine has chosen to hide (本机忽略)."""
+    machine = _machine_name()
+    return set(_load_raw().get("local_data", {})
+               .get(machine, {}).get("ignored_offline", []))
+
+
+def ignore_offline(entry_id: str) -> None:
+    """Hide an offline (other-machine) entry on this machine. Stored per-machine
+    in local_data[machine]['ignored_offline']; does not touch other machines."""
+    cfg   = _load_raw()
+    local = _local_data(cfg, _machine_name())
+    lst   = local.setdefault("ignored_offline", [])
+    if entry_id not in lst:
+        lst.append(entry_id)
+        _save_raw(cfg)
+
+
+def unignore_offline(entry_id: str) -> None:
+    """Un-hide a previously 本机忽略 offline entry (it returns to 离线配置)."""
+    cfg     = _load_raw()
+    machine = _machine_name()
+    local   = cfg.get("local_data", {}).get(machine)
+    if not local:
+        return
+    lst = local.get("ignored_offline", [])
+    if entry_id in lst:
+        local["ignored_offline"] = [i for i in lst if i != entry_id]
+        _save_raw(cfg)
+
+
 def normalize_entries() -> tuple[int, int]:
     """Normalize global ↔ local_data placement for this machine in one pass.
 
@@ -895,6 +926,45 @@ def delete_entry(entry_id: str, remove_junction: bool = True) -> tuple[bool, str
         ]
     _save_raw(cfg)
     return True, ""
+
+
+def delete_entry_all_machines(entry_id: str, remove_junction: bool = False) -> bool:
+    """Erase entry_id from symlinks.json everywhere: global symlinks + every
+    machine's local_data (and any ignored_offline lists). Other machines stop
+    managing/rebuilding it after they sync; their already-built junctions are
+    left in place (we can't reach them). Optionally remove this machine's junction.
+    """
+    cfg = _load_raw()
+    if remove_junction:
+        bases = get_machine_config()
+        if bases:
+            raw = next((r for r in cfg.get("symlinks", []) if r["id"] == entry_id), None) or \
+                  next((r for r in cfg.get("local_data", {}).get(_machine_name(), {})
+                        .get("symlinks", []) if r["id"] == entry_id), None)
+            if raw:
+                try:
+                    _remove_link(_resolve(raw["link"], bases))
+                except OSError:
+                    pass
+
+    changed = False
+    syms = cfg.get("symlinks", [])
+    if any(r["id"] == entry_id for r in syms):
+        cfg["symlinks"] = [r for r in syms if r["id"] != entry_id]
+        changed = True
+    for mdata in cfg.get("local_data", {}).values():
+        s = mdata.get("symlinks", [])
+        kept = [r for r in s if r["id"] != entry_id]
+        if len(kept) != len(s):
+            mdata["symlinks"] = kept
+            changed = True
+        ig = mdata.get("ignored_offline", [])
+        if entry_id in ig:
+            mdata["ignored_offline"] = [i for i in ig if i != entry_id]
+            changed = True
+    if changed:
+        _save_raw(cfg)
+    return changed
 
 
 def edit_entry(entry_id: str,
