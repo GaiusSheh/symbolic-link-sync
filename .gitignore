@@ -1,4 +1,5 @@
 .claude/
+.agents/
 watcher.log
 scan_result.txt
 
