@@ -9,6 +9,7 @@ build/
 src/__pycache__/
 src/core/__pycache__/
 src/ui/__pycache__/
+.dev/**/__pycache__/
 *.spec
 # Inno Setup installer now outputs to dist/ (already ignored above)
 
