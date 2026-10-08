@@ -69,10 +69,14 @@ _POLL_MS  = 100
 
 def _setup_logging():
     # Log is non-critical: if another (e.g. old) instance still holds it,
-    # don't crash — skip the reset and/or fall back to console-only.
+    # don't crash — skip the rotation and/or fall back to console-only.
+    # Fresh log each run, but keep the previous run as .1 (post-mortem evidence
+    # survives a reboot/restart — see issue #1).
     try:
-        _LOG_PATH.unlink(missing_ok=True)          # fresh log each run
-        Path(str(_LOG_PATH) + ".1").unlink(missing_ok=True)
+        prev = Path(str(_LOG_PATH) + ".1")
+        prev.unlink(missing_ok=True)
+        if _LOG_PATH.exists():
+            _LOG_PATH.rename(prev)
     except OSError:
         pass
     handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]

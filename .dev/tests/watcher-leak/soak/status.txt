@@ -1,0 +1,2 @@
+2026-10-08T00:46:07  START soak pid=53688 hours=15 interval=60s alarm=100MiB
+2026-10-08T11:19:43  STOP soak (user: acceptance passed, sampling no longer needed)
